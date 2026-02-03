@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture d'écran de site</title>
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --panel: #fffaf2;
+      --ink: #1e1b16;
+      --muted: #6c6459;
+      --accent: #0e4b7d;
+      --accent-2: #f2b134;
+      --danger: #b6402c;
+      --ok: #2f6f3e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Avenir", "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(135deg, #f7f4ef 0%, #efe6d7 100%);
+      min-height: 100vh;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid #eadfcd;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.07);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="url"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #d9cdbb;
+      font-size: 16px;
+      background: #fff;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+      transition: transform 0.05s ease, background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #0b3a62; }
+    button:active { transform: translateY(1px); }
+    button[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .alert {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .alert.error { background: #f8e0dc; color: var(--danger); }
+    .alert.success { background: #e0f0e5; color: var(--ok); }
+
+    .result {
+      margin-top: 18px;
+      display: none;
+    }
+
+    .result img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #e0d4c2;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .meta {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: #f6e6c6;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: #7b5a1c;
+    }
+
+    .info {
+      margin-top: 22px;
+      border-left: 4px solid var(--accent-2);
+      background: #fff4d9;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .row { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Capture d'écran 1920×1080</h1>
+    <p class="subtitle">Saisis une URL et récupère une capture PNG enregistrée dans <strong>screenshots/</strong>.</p>
+
+    <div class="panel">
+      <label for="urlInput">Adresse du site</label>
+      <div class="row">
+        <input id="urlInput" type="url" placeholder="https://example.com" autocomplete="url" />
+        <button id="captureBtn">Capturer</button>
+        <button id="historyBtn" type="button" style="background:#6b4c2a">Historique</button>
+      </div>
+      <div class="note">Format du fichier : <code>id_domaine_YYYYMMDD_HHMM.png</code> (sans <code>www</code>).</div>
+
+      <div id="alert" class="alert"></div>
+
+      <div id="result" class="result">
+        <img id="preview" alt="Aperçu de la capture" />
+        <div class="meta">
+          <span id="filename" class="badge"></span>
+          <a id="downloadLink" href="#" download>Télécharger</a>
+        </div>
+      </div>
+
+      <div id="history" class="result">
+        <div id="historyList"></div>
+      </div>
+
+      <div class="info">
+        ℹ️ Le rendu est réalisé côté serveur avec Playwright. La capture est limitée au viewport 1920×1080.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const urlInput = document.getElementById("urlInput");
+    const captureBtn = document.getElementById("captureBtn");
+    const historyBtn = document.getElementById("historyBtn");
+    const alertEl = document.getElementById("alert");
+    const resultEl = document.getElementById("result");
+    const historyEl = document.getElementById("history");
+    const historyListEl = document.getElementById("historyList");
+    const previewEl = document.getElementById("preview");
+    const filenameEl = document.getElementById("filename");
+    const downloadLink = document.getElementById("downloadLink");
+
+    function showAlert(message, type = "error") {
+      alertEl.textContent = message;
+      alertEl.className = `alert ${type}`;
+      alertEl.style.display = "block";
+    }
+
+    function clearAlert() {
+      alertEl.style.display = "none";
+    }
+
+    function setLoading(isLoading) {
+      captureBtn.disabled = isLoading;
+      captureBtn.textContent = isLoading ? "Capture..." : "Capturer";
+    }
+
+    captureBtn.addEventListener("click", async () => {
+      clearAlert();
+      resultEl.style.display = "none";
+      historyEl.style.display = "none";
+
+      const url = urlInput.value.trim();
+      if (!url) {
+        showAlert("Merci de saisir une URL.");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await fetch("/api/screenshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Erreur inconnue.");
+        }
+
+        previewEl.src = data.url;
+        filenameEl.textContent = data.filename;
+        downloadLink.href = data.url;
+        downloadLink.download = data.filename;
+        resultEl.style.display = "block";
+        showAlert("Capture enregistrée avec succès.", "success");
+      } catch (err) {
+        showAlert(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function domainFromFilename(filename) {
+      const base = filename.replace(/_\\d{8}_\\d{4}\\.png$/i, "");
+      return base.replace(/^\\d{3}_/, "");
+    }
+
+    function idFromFilename(filename) {
+      const match = filename.match(/^(\\d{3})_/);
+      return match ? match[1] : "—";
+    }
+
+    function renderHistory(items) {
+      historyListEl.innerHTML = "";
+      if (!items.length) {
+        historyListEl.textContent = "Aucune capture enregistrée.";
+        return;
+      }
+
+      items.forEach((item) => {
+        const wrapper = document.createElement("div");
+        wrapper.style.marginTop = "16px";
+
+        const titleRow = document.createElement("div");
+        titleRow.style.display = "flex";
+        titleRow.style.alignItems = "center";
+        titleRow.style.justifyContent = "space-between";
+        titleRow.style.marginBottom = "8px";
+
+        const title = document.createElement("div");
+        title.textContent = `${idFromFilename(item.filename)} · ${domainFromFilename(item.filename)}`;
+        title.style.fontWeight = "600";
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Supprimer";
+        delBtn.style.background = "#b6402c";
+        delBtn.style.padding = "6px 10px";
+        delBtn.style.fontSize = "12px";
+        delBtn.addEventListener("click", async () => {
+          const confirmDelete = confirm(`Supprimer ${item.filename} ?`);
+          if (!confirmDelete) return;
+          try {
+            const response = await fetch(`/api/history/${encodeURIComponent(item.filename)}`, {
+              method: "DELETE"
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erreur suppression.");
+            wrapper.remove();
+          } catch (err) {
+            showAlert(err.message);
+          }
+        });
+
+        titleRow.appendChild(title);
+        titleRow.appendChild(delBtn);
+
+        const img = document.createElement("img");
+        img.src = item.url;
+        img.alt = item.filename;
+        img.style.width = "100%";
+        img.style.borderRadius = "12px";
+        img.style.border = "1px solid #e0d4c2";
+        img.style.boxShadow = "0 8px 20px rgba(0, 0, 0, 0.08)";
+
+        wrapper.appendChild(titleRow);
+        wrapper.appendChild(img);
+        historyListEl.appendChild(wrapper);
+      });
+    }
+
+    historyBtn.addEventListener("click", async () => {
+      clearAlert();
+      resultEl.style.display = "none";
+      historyEl.style.display = "block";
+      historyListEl.textContent = "Chargement...";
+
+      try {
+        const response = await fetch("/api/history");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Erreur inconnue.");
+        }
+        renderHistory(data.items || []);
+      } catch (err) {
+        showAlert(err.message);
+      }
+    });
+  </script>
+</body>
+</html>
