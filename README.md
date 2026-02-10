@@ -1,60 +1,94 @@
-# Screencapture Site
+# HTML Content Creator
 
-A small web app + Node.js service that captures website screenshots at **1920×1080** and saves them locally in `screenshots/` with the filename pattern `id_domain_YYYYMMDD_HHMM.png`.
+Web app + Node.js service to capture websites (1920x1080), organize them by project, generate HTML presentation pages, and export to PDF.
 
 ## Features
-- Web UI to submit a URL and preview/download the capture
-- Saves PNG screenshots at 1920×1080 viewport size (no full-page)
-- Filename format: `id_domain_YYYYMMDD_HHMM.png` (drops `www.`)
-- Auto-incrementing ID starting at `001` (continues even if files are deleted)
-- Project management in the UI (select existing project or create a new one)
-- Captures and history separated by project (`default` in `screenshots/`, others in `screenshots/<project>/`)
-- History view to browse previous captures and delete them
-- Attempts to dismiss common cookie banners automatically
-- Writes/updates a `captures.md` log for each project (`screenshots/captures.md` for `default`, else `screenshots/<project>/captures.md`)
-- Each entry includes the original URL, full timestamp, and a link to the PNG
-- Project panel can generate a static HTML page directly from the selected project
-- A top-page `Explorer les captures` button appears automatically when `captures_<project>.html` already exists
-- A top-page `Export PDF` button exports the current project HTML to `captures_<project>.pdf` (links and notes preserved)
-- In generated HTML, `Mode edition` now saves both capture order and notes directly to the project (no mandatory order file download)
+- URL capture with Playwright in PNG, viewport `1920x1080` (not full-page)
+- Filename format: `id_domain_YYYYMMDD_HHMM.png`
+- Per-project incremental IDs (`001`, `002`, ...) that do not reset after deletion
+- Project management in UI:
+  - select existing project
+  - create new project
+- Per-project storage:
+  - `default`: files under `screenshots/`
+  - other projects: files under `screenshots/<project>/`
+- Capture history per project with delete action
+- Automatic attempt to dismiss common cookie banners before capture
+- Capture log per project in markdown:
+  - `screenshots/captures.md` for `default`
+  - `screenshots/<project>/captures.md` for other projects
+- HTML generation per project (`captures_<project>.html`) from capture logs
+- Top actions in main UI when generated HTML exists:
+  - `Explorer les captures`
+  - `Export PDF`
+- PDF export from generated HTML:
+  - landscape slides style
+  - one capture per page
+  - background preserved
+  - links and notes preserved
+- Generated HTML toolbar includes:
+  - `Mode edition`
+  - `Export PDF`
+- Edit mode supports:
+  - reorder captures
+  - `Ajout note` per capture with markdown textarea
+  - save order + notes in one action
+
+## Project Data Layout
+- Screenshots:
+  - `screenshots/*.png` (`default` project)
+  - `screenshots/<project>/*.png`
+- Capture logs:
+  - `screenshots/captures.md`
+  - `screenshots/<project>/captures.md`
+- Order files:
+  - `order/<project>.md`
+- Notes (single file per project):
+  - `notes/<project>/notes.md`
+- Generated outputs:
+  - `captures_<project>.html`
+  - `captures_<project>.pdf`
 
 ## Installation
-
-### Local (recommended)
 1. Install dependencies:
-   ```bash
-   npm install
-   npx playwright install chromium
-   ```
+```bash
+npm install
+npx playwright install chromium
+```
 2. Start the server:
-   ```bash
-   npm run dev
-   ```
-3. Open the app:
-   - Visit `http://localhost:3000` in your browser
+```bash
+npm run dev
+```
+3. Open:
+- [http://localhost:3000](http://localhost:3000)
 
-### Deploying (notes)
-This app relies on Playwright/Chromium to render screenshots. Serverless platforms like Vercel require extra setup to bundle browser binaries. If you want to deploy to Vercel, plan for a custom build step and Playwright-compatible runtime. If you'd like, I can add a Vercel-friendly configuration.
+## API (main endpoints)
+- `POST /api/screenshot`
+- `GET /api/history?project=<name>`
+- `DELETE /api/history/:filename?project=<name>`
+- `GET /api/projects`
+- `POST /api/projects`
+- `GET /api/projects/:project/html`
+- `POST /api/projects/:project/generate-html`
+- `POST /api/projects/:project/export-pdf`
+- `POST /api/projects/:project/order`
+- `POST /api/projects/:project/editor-state`
+- `GET /generated/:filename`
+- `GET /generated-pdf/:filename`
 
-## HTML Generation (per project)
+## HTML Generation Script
+Script location:
+- `/Users/willow/Sites/HTML Content Creator/generate_captures_html.py`
 
-The repository now includes `/Users/willow/Sites/screencapturesite/generate_captures_html.py` to build static HTML pages from capture logs.
-
-- Default project input: `screenshots/captures.md`
-- Named project input: `screenshots/<project>/captures.md`
-- Output file: `captures_<project>.html`
-- Project notes: `notes/<project>/notes.md` (single file per project)
-- Project order file: `order/<project>.md`
-
-### Usage
-
-Generate for one project:
+Usage:
 ```bash
 python3 generate_captures_html.py --project default
-python3 generate_captures_html.py --project client-a
+python3 generate_captures_html.py --project projet-test
+python3 generate_captures_html.py --all-projects
+python3 generate_captures_html.py --project default --title "Mon titre"
 ```
 
-Generate for all projects:
-```bash
-python3 generate_captures_html.py --all-projects
-```
+## Notes
+- The generated HTML edit mode saves order and notes to the server.
+- If server save fails, order download fallback is used.
+- Vercel/serverless deployment requires extra Playwright/Chromium runtime setup.
