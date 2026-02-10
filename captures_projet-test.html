@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Captures - projet-test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #f6f3ee;
+      --ink: #1f2328;
+      --muted: #5f6b76;
+      --card: #fffdf9;
+      --line: #e5dfd6;
+      --accent: #0f5bd6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Source Serif 4", "Georgia", serif;
+    }
+
+    .page{
+      max-width: 920px;
+      margin: 48px auto 80px;
+      padding: 0 24px;
+    }
+
+    h1{
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+      font-size: 36px;
+      text-align: center;
+      margin: 0 0 24px;
+    }
+
+    .toolbar{
+      display: flex;
+      justify-content: flex-end;
+      margin: -8px 0 18px;
+    }
+
+    .edit-toggle{
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      background: var(--ink);
+      color: var(--bg);
+      border: none;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px;
+      margin: 20px 0;
+      box-shadow: 0 6px 18px rgba(20, 30, 45, 0.06);
+      width: 100%;
+      position: relative;
+    }
+
+    .capture-row{
+      position: relative;
+    }
+
+    .shot{
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto 18px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .link{
+      display: inline-block;
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-word;
+    }
+
+    .link:hover{ text-decoration: underline; }
+
+    .date{
+      display: block;
+      margin-top: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .note{
+      font-size: 16px;
+      color: var(--muted);
+      background: #f2ede5;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      border-radius: 12px;
+      position: absolute;
+      top: 24px;
+      right: -260px;
+      width: 240px;
+    }
+
+    .note p{ margin: 0 0 8px; }
+    .note p:last-child{ margin-bottom: 0; }
+    .note ul{ margin: 0; padding-left: 18px; }
+
+    @media (max-width: 1200px){
+      .note{
+        position: static;
+        width: auto;
+        margin-top: 12px;
+      }
+    }
+
+    .edit-controls{
+      display: none;
+      position: absolute;
+      top: 28px;
+      right: 12px;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .edit-mode .edit-controls{ display: flex; }
+
+    .edit-button{
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="toolbar">
+      <button class="edit-toggle" id="editToggle">Mode edition</button>
+    </div>
+    <h1>Captures - projet-test</h1>
+
+      <article class="card" data-capture="024_google.com_20260210_0902.png">
+        <a class="shot-link" href="https://google.com/" target="_blank" rel="noopener">
+          <img class="shot" src="/screenshots/projet-test/024_google.com_20260210_0902.png" alt="Capture de l'article" loading="lazy" />
+        </a>
+        <a class="link" href="https://google.com/" target="_blank" rel="noopener">https://google.com/</a>
+        <span class="date">2026-02-10 09:02:28</span>
+      </article>
+  </main>
+  <script>
+    const root = document.documentElement;
+    const toggle = document.getElementById('editToggle');
+
+    function ensureControls() {
+      document.querySelectorAll('.card').forEach((card) => {
+        if (card.querySelector('.edit-controls')) return;
+        const controls = document.createElement('div');
+        controls.className = 'edit-controls';
+        controls.innerHTML = `
+          <button class="edit-button move-up" title="Monter">↑</button>
+          <button class="edit-button move-down" title="Descendre">↓</button>
+        `;
+        card.appendChild(controls);
+      });
+    }
+
+    function moveCard(card, direction) {
+      const row = card.closest('.capture-row') || card;
+      const parent = row.parentElement;
+      if (!parent) return;
+      if (direction === 'up') {
+        const prev = row.previousElementSibling;
+        if (prev) parent.insertBefore(row, prev);
+      } else {
+        const next = row.nextElementSibling;
+        if (next) parent.insertBefore(next, row);
+      }
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!root.classList.contains('edit-mode')) return;
+      const up = event.target.closest('.move-up');
+      const down = event.target.closest('.move-down');
+      if (!up && !down) return;
+      const card = event.target.closest('.card');
+      if (!card) return;
+      moveCard(card, up ? 'up' : 'down');
+    });
+
+    function buildOrder() {
+      const items = [];
+      document.querySelectorAll('.card').forEach((card) => {
+        const name = card.getAttribute('data-capture');
+        if (name) items.push(name);
+      });
+      return items.join('\n') + '\n';
+    }
+
+    function downloadOrder() {
+      const content = buildOrder();
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'order_projet-test.md';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    toggle.addEventListener('click', () => {
+      const editing = root.classList.toggle('edit-mode');
+      if (editing) {
+        ensureControls();
+        toggle.textContent = 'Sauvegarder';
+      } else {
+        downloadOrder();
+        toggle.textContent = 'Mode edition';
+      }
+    });
+  </script>
+</body>
+</html>

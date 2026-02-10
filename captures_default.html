@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Captures - default</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #f6f3ee;
+      --ink: #1f2328;
+      --muted: #5f6b76;
+      --card: #fffdf9;
+      --line: #e5dfd6;
+      --accent: #0f5bd6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Source Serif 4", "Georgia", serif;
+    }
+
+    .page{
+      max-width: 920px;
+      margin: 48px auto 80px;
+      padding: 0 24px;
+    }
+
+    h1{
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      letter-spacing: -0.02em;
+      font-weight: 600;
+      font-size: 36px;
+      text-align: center;
+      margin: 0 0 24px;
+    }
+
+    .toolbar{
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin: -8px 0 18px;
+    }
+
+    .edit-toggle{
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      background: var(--ink);
+      color: var(--bg);
+      border: none;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .export-pdf{
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      background: #6b4c2a;
+      color: var(--bg);
+      border: none;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px;
+      margin: 20px 0;
+      box-shadow: 0 6px 18px rgba(20, 30, 45, 0.06);
+      width: 100%;
+      position: relative;
+    }
+
+    .capture-row{
+      position: relative;
+    }
+
+    .shot-block{
+      display: inline-block;
+      width: fit-content;
+      max-width: 100%;
+      text-align: left;
+    }
+
+    .shot-link{
+      display: block;
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 auto 18px;
+    }
+
+    .shot{
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .link{
+      display: inline-block;
+      font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-word;
+      width: 100%;
+    }
+
+    .link:hover{ text-decoration: underline; }
+
+    .date{
+      display: block;
+      margin-top: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .note{
+      font-size: 16px;
+      color: var(--muted);
+      background: #f2ede5;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      border-radius: 12px;
+      position: absolute;
+      top: 24px;
+      right: -260px;
+      width: 240px;
+    }
+
+    .note p{ margin: 0 0 8px; }
+    .note p:last-child{ margin-bottom: 0; }
+    .note ul{ margin: 0; padding-left: 18px; }
+
+    .note-editor{
+      display: none;
+      margin-top: 10px;
+    }
+
+    .note-editor textarea{
+      width: 100%;
+      min-height: 90px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      resize: vertical;
+      font-family: "Source Serif 4", "Georgia", serif;
+      font-size: 14px;
+    }
+
+    .note-hint{
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 1200px){
+      .note{
+        position: static;
+        width: auto;
+        margin-top: 12px;
+      }
+    }
+
+    .edit-controls{
+      display: none;
+      position: absolute;
+      top: 28px;
+      right: 12px;
+      gap: 6px;
+      z-index: 2;
+    }
+
+    .edit-mode .edit-controls{ display: flex; }
+
+    .edit-button{
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 8px;
+      min-width: 30px;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="toolbar">
+      <button class="export-pdf" id="exportPdf">Export PDF</button>
+      <button class="edit-toggle" id="editToggle">Mode edition</button>
+    </div>
+    <h1>Captures - default</h1>
+
+      <div class="capture-row">
+        <article class="card" data-capture="001_simonwillison.net_20260203_1602.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://simonwillison.net/2026/Jan/30/a-programming-tool-for-the-arts/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/001_simonwillison.net_20260203_1602.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://simonwillison.net/2026/Jan/30/a-programming-tool-for-the-arts/" target="_blank" rel="noopener">https://simonwillison.net/2026/Jan/30/a-programming-tool-for-the-arts/</a>
+            <span class="date">2026-02-03 16:02:12</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="002_luiscardoso.dev_20260203_1611.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://www.luiscardoso.dev/blog/sandboxes-for-ai" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/002_luiscardoso.dev_20260203_1611.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://www.luiscardoso.dev/blog/sandboxes-for-ai" target="_blank" rel="noopener">https://www.luiscardoso.dev/blog/sandboxes-for-ai</a>
+            <span class="date">2026-02-03 16:11:28</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="003_emsh.cat_20260203_1611.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://emsh.cat/one-human-one-agent-one-browser/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/003_emsh.cat_20260203_1611.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://emsh.cat/one-human-one-agent-one-browser/" target="_blank" rel="noopener">https://emsh.cat/one-human-one-agent-one-browser/</a>
+            <span class="date">2026-02-03 16:11:35</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="004_openclaw.ai_20260203_1611.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://openclaw.ai/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/004_openclaw.ai_20260203_1611.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://openclaw.ai/" target="_blank" rel="noopener">https://openclaw.ai/</a>
+            <span class="date">2026-02-03 16:11:41</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="005_til.simonwillison.net_20260203_1611.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://til.simonwillison.net/llms/openclaw-docker" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/005_til.simonwillison.net_20260203_1611.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://til.simonwillison.net/llms/openclaw-docker" target="_blank" rel="noopener">https://til.simonwillison.net/llms/openclaw-docker</a>
+            <span class="date">2026-02-03 16:11:48</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="007_danielmiessler.com_20260203_1616.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://danielmiessler.com/blog/personal-ai-infrastructure" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/007_danielmiessler.com_20260203_1616.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://danielmiessler.com/blog/personal-ai-infrastructure" target="_blank" rel="noopener">https://danielmiessler.com/blog/personal-ai-infrastructure</a>
+            <span class="date">2026-02-03 16:16:09</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="008_steipete.me_20260203_1616.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://steipete.me/posts/2025/shipping-at-inference-speed" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/008_steipete.me_20260203_1616.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://steipete.me/posts/2025/shipping-at-inference-speed" target="_blank" rel="noopener">https://steipete.me/posts/2025/shipping-at-inference-speed</a>
+            <span class="date">2026-02-03 16:16:26</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="009_interconnected.org_20260203_1616.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://interconnected.org/home/2026/01/30/efficacy" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/009_interconnected.org_20260203_1616.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://interconnected.org/home/2026/01/30/efficacy" target="_blank" rel="noopener">https://interconnected.org/home/2026/01/30/efficacy</a>
+            <span class="date">2026-02-03 16:16:34</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="010_embracethered.com_20260203_1617.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://embracethered.com/blog/posts/2025/the-normalization-of-deviance-in-ai/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/010_embracethered.com_20260203_1617.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://embracethered.com/blog/posts/2025/the-normalization-of-deviance-in-ai/" target="_blank" rel="noopener">https://embracethered.com/blog/posts/2025/the-normalization-of-deviance-in-ai/</a>
+            <span class="date">2026-02-03 16:17:08</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="011_theatlantic.com_20260203_1617.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://www.theatlantic.com/technology/2026/01/claude-code-ai-hype/685617/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/011_theatlantic.com_20260203_1617.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://www.theatlantic.com/technology/2026/01/claude-code-ai-hype/685617/" target="_blank" rel="noopener">https://www.theatlantic.com/technology/2026/01/claude-code-ai-hype/685617/</a>
+            <span class="date">2026-02-03 16:17:57</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="012_ntdotdev.wordpress.com_20260203_1618.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://ntdotdev.wordpress.com/2026/01/25/state-of-the-windows-what-is-going-on-with-windows-11/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/012_ntdotdev.wordpress.com_20260203_1618.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://ntdotdev.wordpress.com/2026/01/25/state-of-the-windows-what-is-going-on-with-windows-11/" target="_blank" rel="noopener">https://ntdotdev.wordpress.com/2026/01/25/state-of-the-windows-what-is-going-on-with-windows-11/</a>
+            <span class="date">2026-02-03 16:18:02</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="013_sudouest.fr_20260203_1618.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://www.sudouest.fr/sciences-et-technologie/l-humour-derniere-forteresse-humaine-face-a-l-intelligence-artificielle-27654624.php" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/013_sudouest.fr_20260203_1618.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://www.sudouest.fr/sciences-et-technologie/l-humour-derniere-forteresse-humaine-face-a-l-intelligence-artificielle-27654624.php" target="_blank" rel="noopener">https://www.sudouest.fr/sciences-et-technologie/l-humour-derniere-forteresse-humaine-face-a-l-intelligence-artificielle-27654624.php</a>
+            <span class="date">2026-02-03 16:18:44</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="014_github.com_20260203_1629.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://github.com/ArthurSrz/oracles_ou_romanciers" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/014_github.com_20260203_1629.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://github.com/ArthurSrz/oracles_ou_romanciers" target="_blank" rel="noopener">https://github.com/ArthurSrz/oracles_ou_romanciers</a>
+            <span class="date">2026-02-03 16:29:33</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="015_moltbook.com_20260203_1629.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://www.moltbook.com/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/015_moltbook.com_20260203_1629.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://www.moltbook.com/" target="_blank" rel="noopener">https://www.moltbook.com/</a>
+            <span class="date">2026-02-03 16:29:57</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="017_edition.cnn.com_20260203_1633.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://edition.cnn.com/2026/02/03/tech/moltbook-explainer-scli-intl" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/017_edition.cnn.com_20260203_1633.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://edition.cnn.com/2026/02/03/tech/moltbook-explainer-scli-intl" target="_blank" rel="noopener">https://edition.cnn.com/2026/02/03/tech/moltbook-explainer-scli-intl</a>
+            <span class="date">2026-02-03 16:33:54</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="018_lemonde.fr_20260204_1014.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://www.lemonde.fr/pixels/article/2026/02/03/le-reseau-social-moltbook-reflet-des-progres-encore-illusoires-de-l-intelligence-artificielle_6665267_4408996.html" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/018_lemonde.fr_20260204_1014.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://www.lemonde.fr/pixels/article/2026/02/03/le-reseau-social-moltbook-reflet-des-progres-encore-illusoires-de-l-intelligence-artificielle_6665267_4408996.html" target="_blank" rel="noopener">https://www.lemonde.fr/pixels/article/2026/02/03/le-reseau-social-moltbook-reflet-des-progres-encore-illusoires-de-l-intelligence-artificielle_6665267_4408996.html</a>
+            <span class="date">2026-02-04 10:14:27</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="019_mitchellh.com_20260206_1030.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://mitchellh.com/writing/my-ai-adoption-journey" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/019_mitchellh.com_20260206_1030.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://mitchellh.com/writing/my-ai-adoption-journey" target="_blank" rel="noopener">https://mitchellh.com/writing/my-ai-adoption-journey</a>
+            <span class="date">2026-02-06 10:30:11</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="020_github.com_20260206_1045.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://github.com/Significant-Gravitas/AutoGPT" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/020_github.com_20260206_1045.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://github.com/Significant-Gravitas/AutoGPT" target="_blank" rel="noopener">https://github.com/Significant-Gravitas/AutoGPT</a>
+            <span class="date">2026-02-06 10:45:53</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="021_github.com_20260206_1046.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://github.com/crewAIInc/crewAI" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/021_github.com_20260206_1046.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://github.com/crewAIInc/crewAI" target="_blank" rel="noopener">https://github.com/crewAIInc/crewAI</a>
+            <span class="date">2026-02-06 10:46:56</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="022_sharedclaude.com_20260206_1134.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://sharedclaude.com" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/022_sharedclaude.com_20260206_1134.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://sharedclaude.com" target="_blank" rel="noopener">https://sharedclaude.com</a>
+            <span class="date">2026-02-06 11:34:56</span>
+          </div>
+        </article>
+        
+      </div>
+
+      <div class="capture-row">
+        <article class="card" data-capture="023_opening-up-chatgpt.github.io_20260209_1155.png">
+          <div class="shot-block">
+            <a class="shot-link" href="https://opening-up-chatgpt.github.io/" target="_blank" rel="noopener">
+              <img class="shot" src="/screenshots/023_opening-up-chatgpt.github.io_20260209_1155.png" alt="Capture de l'article" loading="lazy" />
+            </a>
+            <a class="link" href="https://opening-up-chatgpt.github.io/" target="_blank" rel="noopener">https://opening-up-chatgpt.github.io/</a>
+            <span class="date">2026-02-09 11:55:55</span>
+          </div>
+        </article>
+        
+      </div>
+  </main>
+  <script>
+    const root = document.documentElement;
+    const toggle = document.getElementById('editToggle');
+    const exportPdf = document.getElementById('exportPdf');
+    const projectName = "default";
+    const pageTitle = "Captures - default";
+    const initialNotes = {};
+
+    function ensureControls() {
+      document.querySelectorAll('.card').forEach((card) => {
+        if (card.querySelector('.edit-controls')) return;
+        const controls = document.createElement('div');
+        controls.className = 'edit-controls';
+        controls.innerHTML = `
+          <button class="edit-button move-up" title="Monter">↑</button>
+          <button class="edit-button move-down" title="Descendre">↓</button>
+          <button class="edit-button note-toggle" title="Ajouter une note">Ajout note</button>
+        `;
+        card.appendChild(controls);
+        ensureNoteEditor(card);
+      });
+    }
+
+    function ensureNoteEditor(card) {
+      if (card.querySelector('.note-editor')) return;
+      const filename = card.getAttribute('data-capture');
+      const note = initialNotes[filename] || '';
+      const editor = document.createElement('div');
+      editor.className = 'note-editor';
+      editor.innerHTML = `
+        <textarea data-note-for="${filename}" placeholder="Note markdown...">${escapeHtml(note)}</textarea>
+        <div class="note-hint">Markdown simple supporte: paragraphes, listes avec - item, italique _texte_.</div>
+      `;
+      card.appendChild(editor);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function markdownToHtml(raw) {
+      const lines = String(raw || '').split(/?
+/);
+      const parts = [];
+      let para = [];
+      let inList = false;
+
+      const inline = (text) => {
+        const escaped = escapeHtml(text);
+        return escaped.replace(/_(.+?)_/g, '<em>$1</em>');
+      };
+
+      const flushPara = () => {
+        if (!para.length) return;
+        parts.push(`<p>${inline(para.join(' '))}</p>`);
+        para = [];
+      };
+
+      const closeList = () => {
+        if (!inList) return;
+        parts.push('</ul>');
+        inList = false;
+      };
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+          flushPara();
+          closeList();
+          continue;
+        }
+        if (line.startsWith('- ')) {
+          flushPara();
+          if (!inList) {
+            parts.push('<ul>');
+            inList = true;
+          }
+          parts.push(`<li>${inline(line.slice(2))}</li>`);
+          continue;
+        }
+        closeList();
+        para.push(line);
+      }
+
+      flushPara();
+      closeList();
+      return parts.join('');
+    }
+
+    function moveCard(card, direction) {
+      const row = card.closest('.capture-row') || card;
+      const parent = row.parentElement;
+      if (!parent) return;
+      if (direction === 'up') {
+        const prev = row.previousElementSibling;
+        if (prev) parent.insertBefore(row, prev);
+      } else {
+        const next = row.nextElementSibling;
+        if (next) parent.insertBefore(next, row);
+      }
+    }
+
+    function toggleNoteEditor(card) {
+      const editor = card.querySelector('.note-editor');
+      if (!editor) return;
+      const shown = editor.style.display === 'block';
+      editor.style.display = shown ? 'none' : 'block';
+    }
+
+    function upsertNoteAside(card) {
+      const row = card.closest('.capture-row');
+      if (!row) return;
+      const textarea = card.querySelector('.note-editor textarea');
+      if (!textarea) return;
+
+      const markdown = textarea.value.trim();
+      const existing = row.querySelector('.note');
+      if (!markdown) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      const rendered = markdownToHtml(markdown);
+      if (existing) {
+        existing.innerHTML = rendered;
+      } else {
+        const aside = document.createElement('aside');
+        aside.className = 'note';
+        aside.innerHTML = rendered;
+        row.appendChild(aside);
+      }
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!root.classList.contains('edit-mode')) return;
+      const up = event.target.closest('.move-up');
+      const down = event.target.closest('.move-down');
+      const noteToggle = event.target.closest('.note-toggle');
+      if (!up && !down && !noteToggle) return;
+      const card = event.target.closest('.card');
+      if (!card) return;
+      if (up || down) {
+        moveCard(card, up ? 'up' : 'down');
+      } else if (noteToggle) {
+        toggleNoteEditor(card);
+      }
+    });
+
+    document.addEventListener('input', (event) => {
+      if (!root.classList.contains('edit-mode')) return;
+      const textarea = event.target.closest('.note-editor textarea');
+      if (!textarea) return;
+      const card = textarea.closest('.card');
+      if (!card) return;
+      upsertNoteAside(card);
+    });
+
+    function buildOrder() {
+      const items = [];
+      document.querySelectorAll('.card').forEach((card) => {
+        const name = card.getAttribute('data-capture');
+        if (name) items.push(name);
+      });
+      return items.join('\n') + '\n';
+    }
+
+    function buildNotes() {
+      const notes = {};
+      document.querySelectorAll('.card').forEach((card) => {
+        const filename = card.getAttribute('data-capture');
+        const textarea = card.querySelector('.note-editor textarea');
+        if (!filename || !textarea) return;
+        const value = textarea.value.trim();
+        if (value) notes[filename] = value;
+      });
+      return notes;
+    }
+
+    function downloadOrder() {
+      const content = buildOrder();
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'order_default.md';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function saveEditorState() {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectName)}/editor-state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: buildOrder(), notes: buildNotes() })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur sauvegarde edition.');
+      }
+    }
+
+    toggle.addEventListener('click', async () => {
+      const editing = root.classList.toggle('edit-mode');
+      if (editing) {
+        ensureControls();
+        toggle.textContent = 'Sauvegarder';
+      } else {
+        try {
+          await saveEditorState();
+        } catch (error) {
+          alert(error.message + ' Telechargement local de l'ordre en secours.');
+          downloadOrder();
+        }
+        toggle.textContent = 'Mode edition';
+      }
+    });
+
+    exportPdf.addEventListener('click', async () => {
+      const originalText = exportPdf.textContent;
+      exportPdf.disabled = true;
+      exportPdf.textContent = 'Export PDF...';
+      try {
+        const response = await fetch(`/api/projects/${encodeURIComponent(projectName)}/export-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: pageTitle })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur export PDF.');
+        }
+        window.open(data.url, '_blank', 'noopener');
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        exportPdf.disabled = false;
+        exportPdf.textContent = originalText;
+      }
+    });
+  </script>
+</body>
+</html>

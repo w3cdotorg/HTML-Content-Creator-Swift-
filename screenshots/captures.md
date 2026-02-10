@@ -90,3 +90,39 @@
 - Date: 2026-02-03 16:33:54
 - Capture: [017_edition.cnn.com_20260203_1633.png](./017_edition.cnn.com_20260203_1633.png)
 
+<!-- CAPTURE: 018_lemonde.fr_20260204_1014.png -->
+- Fichier: `018_lemonde.fr_20260204_1014.png`
+- URL: https://www.lemonde.fr/pixels/article/2026/02/03/le-reseau-social-moltbook-reflet-des-progres-encore-illusoires-de-l-intelligence-artificielle_6665267_4408996.html
+- Date: 2026-02-04 10:14:27
+- Capture: [018_lemonde.fr_20260204_1014.png](./018_lemonde.fr_20260204_1014.png)
+
+<!-- CAPTURE: 019_mitchellh.com_20260206_1030.png -->
+- Fichier: `019_mitchellh.com_20260206_1030.png`
+- URL: https://mitchellh.com/writing/my-ai-adoption-journey
+- Date: 2026-02-06 10:30:11
+- Capture: [019_mitchellh.com_20260206_1030.png](./019_mitchellh.com_20260206_1030.png)
+
+<!-- CAPTURE: 020_github.com_20260206_1045.png -->
+- Fichier: `020_github.com_20260206_1045.png`
+- URL: https://github.com/Significant-Gravitas/AutoGPT
+- Date: 2026-02-06 10:45:53
+- Capture: [020_github.com_20260206_1045.png](./020_github.com_20260206_1045.png)
+
+<!-- CAPTURE: 021_github.com_20260206_1046.png -->
+- Fichier: `021_github.com_20260206_1046.png`
+- URL: https://github.com/crewAIInc/crewAI
+- Date: 2026-02-06 10:46:56
+- Capture: [021_github.com_20260206_1046.png](./021_github.com_20260206_1046.png)
+
+<!-- CAPTURE: 022_sharedclaude.com_20260206_1134.png -->
+- Fichier: `022_sharedclaude.com_20260206_1134.png`
+- URL: https://sharedclaude.com
+- Date: 2026-02-06 11:34:56
+- Capture: [022_sharedclaude.com_20260206_1134.png](./022_sharedclaude.com_20260206_1134.png)
+
+<!-- CAPTURE: 023_opening-up-chatgpt.github.io_20260209_1155.png -->
+- Fichier: `023_opening-up-chatgpt.github.io_20260209_1155.png`
+- URL: https://opening-up-chatgpt.github.io/
+- Date: 2026-02-09 11:55:55
+- Capture: [023_opening-up-chatgpt.github.io_20260209_1155.png](./023_opening-up-chatgpt.github.io_20260209_1155.png)
+
