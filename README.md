@@ -49,15 +49,15 @@ Web app + Node.js service to capture websites (1920x1080), organize them by proj
   - `captures_<project>.html`
   - `captures_<project>.pdf`
 
-## Installation
+## Installation (Bun)
 1. Install dependencies:
 ```bash
-npm install
-npx playwright install chromium
+bun install
+bunx playwright install chromium
 ```
 2. Start the server:
 ```bash
-npm run dev
+bun run dev
 ```
 3. Open:
 - [http://localhost:3000](http://localhost:3000)
