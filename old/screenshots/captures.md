@@ -126,3 +126,15 @@
 - Date: 2026-02-09 11:55:55
 - Capture: [023_opening-up-chatgpt.github.io_20260209_1155.png](./023_opening-up-chatgpt.github.io_20260209_1155.png)
 
+<!-- CAPTURE: 025_aredridel.dinhe.net_20260217_0855.png -->
+- Fichier: `025_aredridel.dinhe.net_20260217_0855.png`
+- URL: https://aredridel.dinhe.net/2026/02/12/the-ai-haters-guide-to-code-with-llms/
+- Date: 2026-02-17 08:55:36
+- Capture: [025_aredridel.dinhe.net_20260217_0855.png](./025_aredridel.dinhe.net_20260217_0855.png)
+
+<!-- CAPTURE: 026_opencode.ai_20260217_1001.png -->
+- Fichier: `026_opencode.ai_20260217_1001.png`
+- URL: https://opencode.ai/
+- Date: 2026-02-17 10:01:24
+- Capture: [026_opencode.ai_20260217_1001.png](./026_opencode.ai_20260217_1001.png)
+

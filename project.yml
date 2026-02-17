@@ -1,0 +1,53 @@
+name: HTMLContentCreator
+options:
+  minimumXcodeGenVersion: 2.44.1
+  deploymentTarget:
+    macOS: "14.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.swiftgpt.htmlcontentcreator
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGNING_ALLOWED: NO
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: "HTML Content Creator"
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+    SWIFT_VERSION: "5.0"
+targets:
+  HTMLContentCreator:
+    type: application
+    platform: macOS
+    sources:
+      - path: HTMLContentCreator
+    settings:
+      base:
+        PRODUCT_NAME: "$(TARGET_NAME)"
+  HTMLContentCreatorTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: HTMLContentCreatorTests
+    dependencies:
+      - target: HTMLContentCreator
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  HTMLContentCreator:
+    build:
+      targets:
+        HTMLContentCreator: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - HTMLContentCreatorTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

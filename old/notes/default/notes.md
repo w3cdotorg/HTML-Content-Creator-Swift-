@@ -20,3 +20,11 @@ L’IA ne “crée” pas seule, elle *reconfigure la chaîne de création* (éc
 On passe de l’outil ponctuel à la relation continue (mémoire, habitudes, style)
 <!-- END NOTE -->
 
+<!-- NOTE: 025_aredridel.dinhe.net_20260217_0855.png -->
+Une bonne entrée en matière pour débuter avec du code et des LLMs.
+<!-- END NOTE -->
+
+<!-- NOTE: 026_opencode.ai_20260217_1001.png -->
+Un équivalent Claude Code / ChatGPT Codex OpenSource, qui permet de brancher plusieurs modèles (y compris locaux) pour générer du code
+<!-- END NOTE -->
+

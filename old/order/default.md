@@ -19,3 +19,5 @@
 021_github.com_20260206_1046.png
 022_sharedclaude.com_20260206_1134.png
 023_opening-up-chatgpt.github.io_20260209_1155.png
+025_aredridel.dinhe.net_20260217_0855.png
+026_opencode.ai_20260217_1001.png
