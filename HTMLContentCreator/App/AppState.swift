@@ -18,13 +18,6 @@ final class AppState: ObservableObject {
         case failed(String)
     }
 
-    enum HistoryState: Equatable {
-        case idle
-        case loading
-        case loaded
-        case failed(String)
-    }
-
     enum EditorState: Equatable {
         case idle
         case loading
@@ -82,7 +75,6 @@ final class AppState: ObservableObject {
     @Published var projectTitleInput: String = ""
     @Published var captureURLInput: String = "https://example.com"
     @Published private(set) var captureState: CaptureState = .idle
-    @Published private(set) var historyState: HistoryState = .idle
     @Published private(set) var historyItems: [CaptureHistoryItem] = []
     @Published private(set) var editorState: EditorState = .idle
     @Published private(set) var editorItems: [EditorItem] = []
@@ -92,6 +84,8 @@ final class AppState: ObservableObject {
     @Published private(set) var previewState: PreviewState?
     @Published private(set) var generatedHTMLURL: URL?
     @Published private(set) var generatedPDFURL: URL?
+    @Published private(set) var lastHTMLGeneratedAt: Date?
+    @Published private(set) var lastPDFGeneratedAt: Date?
     @Published private(set) var feedback: InlineFeedback?
 
     let environment: AppEnvironment
@@ -171,14 +165,10 @@ final class AppState: ObservableObject {
     }
 
     func refreshHistory() async {
-        historyState = .loading
-
         do {
             historyItems = try await environment.store.readHistory(projectName: activeProject)
-            historyState = .loaded
         } catch {
             historyItems = []
-            historyState = .failed(error.localizedDescription)
             setFeedback(kind: .error, "History error: \(error.localizedDescription)")
         }
     }
@@ -196,17 +186,6 @@ final class AppState: ObservableObject {
         } catch {
             setFeedback(kind: .error, error.localizedDescription)
         }
-    }
-
-    func previewHistoryItem(_ item: CaptureHistoryItem) {
-        let image = NSImage(contentsOf: item.fileURL)
-        previewImage = image
-        previewState = PreviewState(
-            filename: item.filename,
-            fileURL: item.fileURL,
-            sourceURL: nil,
-            timestamp: item.modifiedAt
-        )
     }
 
     func captureCurrentURL() async {
@@ -363,21 +342,14 @@ final class AppState: ObservableObject {
         editorItems[index].note = note
     }
 
-    func moveEditorItemUp(filename: String) {
-        guard let index = editorItems.firstIndex(where: { $0.filename == filename }), index > 0 else {
-            return
-        }
-        editorItems.swapAt(index, index - 1)
+    func moveEditorItems(from source: IndexSet, to destination: Int) {
+        editorItems.move(fromOffsets: source, toOffset: destination)
     }
 
-    func moveEditorItemDown(filename: String) {
-        guard
-            let index = editorItems.firstIndex(where: { $0.filename == filename }),
-            index < editorItems.count - 1
-        else {
-            return
-        }
-        editorItems.swapAt(index, index + 1)
+    func editorImageURL(filename: String) -> URL {
+        environment.paths
+            .projectDirectory(projectName: activeProject)
+            .appendingPathComponent(filename)
     }
 
     func saveEditorState() async {
@@ -446,8 +418,21 @@ final class AppState: ObservableObject {
         let pdfURL = environment.paths.generatedPDFFile(projectName: activeProject)
         let fm = FileManager.default
 
-        generatedHTMLURL = fm.fileExists(atPath: htmlURL.path) ? htmlURL : nil
-        generatedPDFURL = fm.fileExists(atPath: pdfURL.path) ? pdfURL : nil
+        if fm.fileExists(atPath: htmlURL.path) {
+            generatedHTMLURL = htmlURL
+            lastHTMLGeneratedAt = modificationDate(for: htmlURL)
+        } else {
+            generatedHTMLURL = nil
+            lastHTMLGeneratedAt = nil
+        }
+
+        if fm.fileExists(atPath: pdfURL.path) {
+            generatedPDFURL = pdfURL
+            lastPDFGeneratedAt = modificationDate(for: pdfURL)
+        } else {
+            generatedPDFURL = nil
+            lastPDFGeneratedAt = nil
+        }
     }
 
     private func sortProjects(_ values: [String]) -> [String] {
@@ -486,5 +471,10 @@ final class AppState: ObservableObject {
         }
 
         return ordered
+    }
+
+    private func modificationDate(for url: URL) -> Date? {
+        let keys: Set<URLResourceKey> = [.contentModificationDateKey]
+        return try? url.resourceValues(forKeys: keys).contentModificationDate
     }
 }
