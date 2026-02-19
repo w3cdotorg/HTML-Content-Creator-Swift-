@@ -14,6 +14,13 @@ struct CaptureView: View {
 
                 GroupBox("URL") {
                     VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Block ads and consent banners (MVP)", isOn: $appState.captureContentBlockingEnabled)
+                            .toggleStyle(.switch)
+
+                        Text("Uses native WebKit content rules before the existing JavaScript cleanup fallback.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
                         TextField("https://example.com", text: $appState.captureURLInput)
                             .textFieldStyle(.roundedBorder)
 

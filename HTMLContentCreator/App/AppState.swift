@@ -87,12 +87,23 @@ final class AppState: ObservableObject {
     @Published private(set) var lastHTMLGeneratedAt: Date?
     @Published private(set) var lastPDFGeneratedAt: Date?
     @Published private(set) var feedback: InlineFeedback?
+    @Published var captureContentBlockingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(captureContentBlockingEnabled, forKey: Self.captureContentBlockingDefaultsKey)
+        }
+    }
 
     let environment: AppEnvironment
     private var hasBootstrapped = false
+    private static let captureContentBlockingDefaultsKey = "capture.contentBlockingEnabled"
 
     init(environment: AppEnvironment = AppEnvironment()) {
         self.environment = environment
+        if UserDefaults.standard.object(forKey: Self.captureContentBlockingDefaultsKey) == nil {
+            self.captureContentBlockingEnabled = true
+        } else {
+            self.captureContentBlockingEnabled = UserDefaults.standard.bool(forKey: Self.captureContentBlockingDefaultsKey)
+        }
     }
 
     var workspaceRootPath: String {
@@ -200,7 +211,8 @@ final class AppState: ObservableObject {
         do {
             let output = try await environment.captureService.capture(
                 urlString: captureURLInput,
-                projectName: activeProject
+                projectName: activeProject,
+                contentBlockingEnabled: captureContentBlockingEnabled
             )
             captureState = .succeeded(output.filename)
 

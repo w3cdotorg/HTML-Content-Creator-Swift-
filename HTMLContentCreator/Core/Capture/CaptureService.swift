@@ -9,7 +9,11 @@ actor CaptureService {
         self.store = store
     }
 
-    func capture(urlString rawURL: String, projectName rawProjectName: String?) async throws -> CaptureOutput {
+    func capture(
+        urlString rawURL: String,
+        projectName rawProjectName: String?,
+        contentBlockingEnabled: Bool = true
+    ) async throws -> CaptureOutput {
         let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             throw AppError.invalidInput("URL is required.")
@@ -29,7 +33,10 @@ actor CaptureService {
         let domain = Self.extractDomain(from: url)
         let filename = "\(captureID)_\(domain)_\(LegacyDateFormatter.yyyymmddString(from: now))_\(LegacyDateFormatter.hhmmString(from: now)).png"
 
-        let pngData = try await WebKitCaptureEngine.capture(url: url)
+        let pngData = try await WebKitCaptureEngine.capture(
+            url: url,
+            contentBlockingEnabled: contentBlockingEnabled
+        )
         let fileURL = try await store.writeCaptureImage(projectName: projectName, filename: filename, pngData: pngData)
 
         let record = CaptureRecord(
