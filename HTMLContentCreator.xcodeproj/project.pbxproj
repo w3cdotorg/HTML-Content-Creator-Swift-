@@ -21,6 +21,7 @@
 		371E7F946176CA701B3CCCBD /* LegacyFileStoreEditorStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A595005A9BF8AC6D8145143 /* LegacyFileStoreEditorStateTests.swift */; };
 		4320928EAC5C2E73CA7E9DDE /* LegacyMarkdownCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D2626AFD08E480590A75A2 /* LegacyMarkdownCodec.swift */; };
 		471364D24BABD72D6B11DC8F /* SpaceGrotesk-VariableFont_wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C446DA0BFA872C823BAA4612 /* SpaceGrotesk-VariableFont_wght.ttf */; };
+		504672313958FAF9C7990309 /* BatchCaptureURLListParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E72BCA8EBB66391968E71B0 /* BatchCaptureURLListParserTests.swift */; };
 		57039013F0D9DAD96A789D85 /* CaptureContentRuleListProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96702282B746E8EDCC1F75E4 /* CaptureContentRuleListProvider.swift */; };
 		628E54CF42B38C6A89B7F290 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039FDE3CB54C4416A5168C3A /* ContentView.swift */; };
 		68B60AE1B1CAF1573880FCAA /* ProjectMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08391D9C720C03FEEA2832DA /* ProjectMetadata.swift */; };
@@ -34,6 +35,7 @@
 		909FDC62A612F6A1F01C9CE7 /* WebKitCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C62A1586BA7FCEF3161F04 /* WebKitCaptureEngine.swift */; };
 		9B7742EA013E1E8B44D037DB /* HTMLDeckGeneratorTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2FAC4871B0F482591D99A7 /* HTMLDeckGeneratorTitleTests.swift */; };
 		9C2C8C0B6FD96108B31BB22C /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD91B215B011E4E60325C6B6 /* AppEnvironment.swift */; };
+		9D2FE676B8DA471E368A3F49 /* BatchCaptureURLListParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51983F3F61D77AE700F4DE7 /* BatchCaptureURLListParser.swift */; };
 		9EC26025AFC207F677BD5231 /* ExploreAndEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C5E2810D69B8FBE9FC823B /* ExploreAndEditView.swift */; };
 		A734ECE76E90B4ECF0AE369F /* PDFExportOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = E239980BD5E09685EF0ED987 /* PDFExportOutput.swift */; };
 		A77B80E27AEBE43C690C1443 /* LegacyFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEC2E11FFD583FFB6ACB69A /* LegacyFileStore.swift */; };
@@ -87,6 +89,7 @@
 		5A595005A9BF8AC6D8145143 /* LegacyFileStoreEditorStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyFileStoreEditorStateTests.swift; sourceTree = "<group>"; };
 		5F6E975E72D5819870404518 /* CaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureService.swift; sourceTree = "<group>"; };
 		6364F8C0D73F8AE9EAF7331D /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		6E72BCA8EBB66391968E71B0 /* BatchCaptureURLListParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchCaptureURLListParserTests.swift; sourceTree = "<group>"; };
 		7C2FAC4871B0F482591D99A7 /* HTMLDeckGeneratorTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDeckGeneratorTitleTests.swift; sourceTree = "<group>"; };
 		7FA1A4EE0403AD04EA38BC96 /* WorkspacePathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePathsTests.swift; sourceTree = "<group>"; };
 		87194C6130C495DA8E9A8E97 /* ProjectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsView.swift; sourceTree = "<group>"; };
@@ -109,6 +112,7 @@
 		E239980BD5E09685EF0ED987 /* PDFExportOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportOutput.swift; sourceTree = "<group>"; };
 		E468E23E55C1ACA95E22E68A /* LegacyDateFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyDateFormatter.swift; sourceTree = "<group>"; };
 		E7B2BFE980223A634183E7BC /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
+		F51983F3F61D77AE700F4DE7 /* BatchCaptureURLListParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchCaptureURLListParser.swift; sourceTree = "<group>"; };
 		FDEC2E11FFD583FFB6ACB69A /* LegacyFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyFileStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -299,6 +303,7 @@
 		C1E26834FD63EBE990A45665 /* HTMLContentCreatorTests */ = {
 			isa = PBXGroup;
 			children = (
+				6E72BCA8EBB66391968E71B0 /* BatchCaptureURLListParserTests.swift */,
 				1DBBE1297DC49DE70DFAF100 /* CaptureContentRuleListProviderTests.swift */,
 				E22127FC490BFA5DA3B18A4B /* HTMLDeckGeneratorIntegrationTests.swift */,
 				7C2FAC4871B0F482591D99A7 /* HTMLDeckGeneratorTitleTests.swift */,
@@ -348,6 +353,7 @@
 		E0CDF0FFB7E5049BD36CB7DB /* Capture */ = {
 			isa = PBXGroup;
 			children = (
+				F51983F3F61D77AE700F4DE7 /* BatchCaptureURLListParser.swift */,
 				96702282B746E8EDCC1F75E4 /* CaptureContentRuleListProvider.swift */,
 				5F6E975E72D5819870404518 /* CaptureService.swift */,
 				9FFCCE99AF137E787BA1E346 /* NSImage+PNG.swift */,
@@ -454,6 +460,7 @@
 				8C21971C712925DEB3D517E4 /* AppError.swift in Sources */,
 				20C9664B6F9F4D1978CF0800 /* AppLogger.swift in Sources */,
 				351EE13F0592588CA5595B39 /* AppState.swift in Sources */,
+				9D2FE676B8DA471E368A3F49 /* BatchCaptureURLListParser.swift in Sources */,
 				57039013F0D9DAD96A789D85 /* CaptureContentRuleListProvider.swift in Sources */,
 				C9D4C47970FDFDA131170B54 /* CaptureHistoryItem.swift in Sources */,
 				8ACE9AF3995E6876191A8172 /* CaptureOutput.swift in Sources */,
@@ -490,6 +497,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				504672313958FAF9C7990309 /* BatchCaptureURLListParserTests.swift in Sources */,
 				DB059C7F74FDB2C44FFC13FF /* CaptureContentRuleListProviderTests.swift in Sources */,
 				82215C3DDA7A355A76929A07 /* HTMLDeckGeneratorIntegrationTests.swift in Sources */,
 				9B7742EA013E1E8B44D037DB /* HTMLDeckGeneratorTitleTests.swift in Sources */,

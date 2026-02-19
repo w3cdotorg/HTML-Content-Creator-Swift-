@@ -18,6 +18,14 @@ final class AppState: ObservableObject {
         case failed(String)
     }
 
+    enum BatchCaptureState: Equatable {
+        case idle
+        case ready(sourceName: String, totalURLs: Int, ignoredLines: Int, duplicateURLs: Int)
+        case running(current: Int, total: Int, succeeded: Int, failed: Int, currentURL: String)
+        case completed(sourceName: String, total: Int, succeeded: Int, failed: Int)
+        case failed(String)
+    }
+
     enum EditorState: Equatable {
         case idle
         case loading
@@ -75,6 +83,9 @@ final class AppState: ObservableObject {
     @Published var projectTitleInput: String = ""
     @Published var captureURLInput: String = "https://example.com"
     @Published private(set) var captureState: CaptureState = .idle
+    @Published private(set) var batchCaptureState: BatchCaptureState = .idle
+    @Published private(set) var batchCaptureURLs: [String] = []
+    @Published private(set) var batchCaptureSourceFileName: String?
     @Published private(set) var historyItems: [CaptureHistoryItem] = []
     @Published private(set) var editorState: EditorState = .idle
     @Published private(set) var editorItems: [EditorItem] = []
@@ -108,6 +119,20 @@ final class AppState: ObservableObject {
 
     var workspaceRootPath: String {
         environment.paths.root.path
+    }
+
+    var isBatchCaptureRunning: Bool {
+        if case .running = batchCaptureState {
+            return true
+        }
+        return false
+    }
+
+    var canStartBatchCapture: Bool {
+        startupState == .ready &&
+            !batchCaptureURLs.isEmpty &&
+            !isBatchCaptureRunning &&
+            captureState != .capturing
     }
 
     func bootstrapIfNeeded() async {
@@ -206,6 +231,12 @@ final class AppState: ObservableObject {
             return
         }
 
+        guard !isBatchCaptureRunning else {
+            captureState = .failed("Batch capture is currently running.")
+            setFeedback(kind: .error, "Batch capture is currently running.")
+            return
+        }
+
         captureState = .capturing
 
         do {
@@ -238,6 +269,144 @@ final class AppState: ObservableObject {
             captureState = .failed(error.localizedDescription)
             AppLogger.capture.error("Capture failed: \(error.localizedDescription, privacy: .public)")
             setFeedback(kind: .error, error.localizedDescription)
+        }
+    }
+
+    func importBatchCaptureList(from fileURL: URL) async {
+        guard !isBatchCaptureRunning else {
+            setFeedback(kind: .info, "Batch capture is already running.")
+            return
+        }
+
+        do {
+            let result = try await Task.detached(priority: .userInitiated) {
+                try BatchCaptureURLListParser.parseFile(at: fileURL)
+            }.value
+
+            guard !result.urls.isEmpty else {
+                throw AppError.invalidInput("No valid http/https URLs found in \(fileURL.lastPathComponent).")
+            }
+
+            batchCaptureURLs = result.urls
+            batchCaptureSourceFileName = fileURL.lastPathComponent
+            batchCaptureState = .ready(
+                sourceName: fileURL.lastPathComponent,
+                totalURLs: result.urls.count,
+                ignoredLines: result.ignoredLineCount,
+                duplicateURLs: result.duplicateCount
+            )
+
+            let skipped = result.ignoredLineCount + result.duplicateCount
+            if skipped > 0 {
+                setFeedback(
+                    kind: .info,
+                    "Loaded \(result.urls.count) URL(s) from \(fileURL.lastPathComponent). Skipped \(skipped) line(s)."
+                )
+            } else {
+                setFeedback(kind: .success, "Loaded \(result.urls.count) URL(s) from \(fileURL.lastPathComponent).")
+            }
+        } catch {
+            batchCaptureState = .failed(error.localizedDescription)
+            setFeedback(kind: .error, error.localizedDescription)
+        }
+    }
+
+    func clearBatchCaptureList() {
+        guard !isBatchCaptureRunning else { return }
+        batchCaptureURLs = []
+        batchCaptureSourceFileName = nil
+        batchCaptureState = .idle
+    }
+
+    func startBatchCapture() async {
+        guard startupState == .ready else {
+            setFeedback(kind: .error, "App is not ready yet.")
+            return
+        }
+
+        guard !batchCaptureURLs.isEmpty else {
+            setFeedback(kind: .error, "Import a .txt or .csv URL list first.")
+            return
+        }
+
+        guard !isBatchCaptureRunning else { return }
+
+        let urls = batchCaptureURLs
+        let sourceName = batchCaptureSourceFileName ?? "URL list"
+        let targetProject = activeProject
+
+        var succeeded = 0
+        var failed = 0
+        var firstError: String?
+        var lastOutput: CaptureOutput?
+
+        captureState = .capturing
+        batchCaptureState = .running(current: 0, total: urls.count, succeeded: 0, failed: 0, currentURL: "")
+
+        for (index, url) in urls.enumerated() {
+            let current = index + 1
+            batchCaptureState = .running(
+                current: current,
+                total: urls.count,
+                succeeded: succeeded,
+                failed: failed,
+                currentURL: url
+            )
+
+            do {
+                let output = try await environment.captureService.capture(
+                    urlString: url,
+                    projectName: targetProject,
+                    contentBlockingEnabled: captureContentBlockingEnabled
+                )
+                succeeded += 1
+                lastOutput = output
+
+                if !projects.contains(output.projectName) {
+                    projects.append(output.projectName)
+                    projects = sortProjects(projects)
+                }
+                activeProject = output.projectName
+
+                previewState = PreviewState(
+                    filename: output.filename,
+                    fileURL: output.fileURL,
+                    sourceURL: output.sourceURL,
+                    timestamp: output.capturedAt
+                )
+                previewImage = NSImage(contentsOf: output.fileURL)
+            } catch {
+                failed += 1
+                if firstError == nil {
+                    firstError = error.localizedDescription
+                }
+                AppLogger.capture.error(
+                    "Batch capture failed for URL \(url, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+
+        await refreshHistory()
+        await refreshEditorState()
+        await refreshGeneratedOutputStatus()
+
+        batchCaptureState = .completed(sourceName: sourceName, total: urls.count, succeeded: succeeded, failed: failed)
+        if let lastOutput {
+            captureState = .succeeded(lastOutput.filename)
+        } else if let firstError {
+            captureState = .failed(firstError)
+        } else {
+            captureState = .idle
+        }
+
+        if failed == 0 {
+            setFeedback(kind: .success, "Batch capture completed: \(succeeded)/\(urls.count) URL(s) succeeded.")
+        } else {
+            let firstErrorSuffix = firstError.map { " First error: \($0)" } ?? ""
+            setFeedback(
+                kind: .info,
+                "Batch capture completed: \(succeeded) succeeded, \(failed) failed.\(firstErrorSuffix)"
+            )
         }
     }
 
