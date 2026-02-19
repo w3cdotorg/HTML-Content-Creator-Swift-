@@ -1,21 +1,49 @@
 # HTML Content Creator (SwiftUI, macOS)
 
-Native macOS app to capture web pages (1920x1080), organize them by project, edit ordering and notes, generate HTML decks, and export PDF slides.
+_I was getting fed up with presentation software, so I used ChatGPT Codex to capture specific websites and build an HTML deck with PDF export._
 
-This rewrite keeps legacy data compatibility while moving the full UX to SwiftUI + WebKit.
+Native macOS app to capture web pages (`1920x1080`), organize captures by project, edit ordering/notes, generate HTML decks, and export PDF slides.
 
-## Key Features
+This Swift rewrite preserves legacy file compatibility while moving the full workflow to SwiftUI + WebKit.
 
-- 100% native macOS UI (SwiftUI).
-- Native WebKit capture engine (`WKWebView`) with fixed viewport: `1920x1080`.
-- Project management: select active project, create new project, and set project title for HTML/PDF.
-- Capture history and deletion per project.
-- Explore & edit workflow: reorder captures, edit notes (simple markdown), save order + notes.
-- HTML deck generation: title handling, Space Grotesk typography, links/notes rendering, in-page `Export PDF`.
-- Native PDF export from the app: A4 landscape, title page, one slide per page, notes, link preservation.
-- Share workflow from UI (`ShareLink`) for generated outputs.
+## Features
 
-## Current UI Structure
+- 100% native macOS app (`SwiftUI` + `AppKit` integration where needed).
+- Native capture engine with `WKWebView` at fixed viewport `1920x1080`.
+- Capture reliability strategy:
+  - primary WebKit snapshot,
+  - fallback snapshot modes,
+  - bitmap/PDF fallback paths for difficult pages.
+- Optional capture-side content blocking switch:
+  - `WKContentRuleList` (MVP),
+  - JavaScript fallback cleanup for cookie banners/overlays.
+- Host-specific hardening for problematic pages (for example strict path for NYTimes, additional cleanup for WordPress and Le Monde cases).
+- Project workflow:
+  - create/select project,
+  - persistent active project,
+  - project title used in HTML/PDF.
+- Explore & Edit:
+  - project capture list,
+  - drag and drop reorder,
+  - per-slide notes editing,
+  - capture deletion.
+- Share workflow:
+  - preflight summary (captures count, title, last HTML/PDF generation, latest errors),
+  - generate/open HTML,
+  - generate/open PDF,
+  - native macOS share action.
+- HTML output:
+  - Space Grotesk typography,
+  - image + source URL links,
+  - notes rendering,
+  - in-page `Export PDF` action.
+- PDF output:
+  - title page,
+  - one landscape slide per page,
+  - notes page support,
+  - links preserved.
+
+## UI Overview
 
 Sidebar sections:
 
@@ -24,26 +52,37 @@ Sidebar sections:
 - `Explore and Edit`
 - `Share`
 
-Global toolbar actions:
+Toolbar actions:
 
-- camera: capture from clipboard URL when available (`http/https`), otherwise opens Capture section
-- PDF: generate PDF
-- Share: share latest generated output
+- camera: uses clipboard URL (`http/https`) when available, otherwise opens `Capture`
+- PDF: direct PDF export
+- Share: share latest generated artifact
 
-## Storage Location
+Window title always shows the active project:
 
-User data is stored in:
+- `HTML Content Creator - <project>`
+
+The sidebar displays green status pills for generated outputs:
+
+- `HTML`
+- `PDF`
+
+## Storage
+
+All user data is stored in:
 
 `~/Library/Application Support/HTML Content Creator`
 
 Main layout:
 
 - `screenshots/*.png` (default project)
-- `screenshots/<project>/*.png` (other projects)
+- `screenshots/<project>/*.png`
 - `screenshots/captures.md`
 - `screenshots/<project>/captures.md`
-- `screenshots/.counter` and `screenshots/<project>/.counter`
-- `screenshots/.project.json` and `screenshots/<project>/.project.json`
+- `screenshots/.counter`
+- `screenshots/<project>/.counter`
+- `screenshots/.project.json`
+- `screenshots/<project>/.project.json`
 - `order/<project>.md`
 - `notes/<project>/notes.md`
 - `captures_<project>.html`
@@ -51,42 +90,39 @@ Main layout:
 
 ## Legacy Compatibility
 
-The `old/` folder is kept as read-only reference and is not modified by the app code.  
-This rewrite preserves legacy-compatible file formats for captures/order/notes so existing data can be reused.
+Legacy-compatible formats are preserved for:
 
-Reference files:
-
-- `old/README.md`
-- `old/server.js`
-- `old/generate_captures_html.py`
+- captures log
+- order files
+- notes files
+- project metadata
 
 ## Tech Stack
 
 - Swift 5
-- SwiftUI (macOS app)
-- AppKit (window/pasteboard/printing integration)
-- WebKit (`WKWebView`) for capture and rendering
-- XcodeGen for project generation (`project.yml`)
-- XCTest for unit/integration tests
+- SwiftUI
+- AppKit
+- WebKit (`WKWebView`)
+- XcodeGen (`project.yml`)
+- XCTest
 
 ## Project Structure
 
-- `HTMLContentCreator/App/` app entrypoint, environment, app state
-- `HTMLContentCreator/Features/` SwiftUI screens
-- `HTMLContentCreator/Core/` capture, persistence, deck generation/export, paths, errors, logging
+- `HTMLContentCreator/App/` app bootstrap, environment, state
+- `HTMLContentCreator/Features/` SwiftUI screens (`Projects`, `Capture`, `Explore and Edit`, `Share`)
+- `HTMLContentCreator/Core/` capture, persistence, HTML/PDF generation, logging, utilities
 - `HTMLContentCreator/Domain/Models/` domain models
-- `HTMLContentCreator/Resources/` bundled resources (including Space Grotesk and branding)
-- `HTMLContentCreatorTests/` unit + integration tests
+- `HTMLContentCreator/Resources/` bundled fonts and branding assets
+- `HTMLContentCreatorTests/` unit/integration tests
 - `project.yml` XcodeGen spec
-- `old/` legacy reference implementation and fixtures
 
-## Build & Run
+## Build and Run
 
 ### Prerequisites
 
 - macOS
-- Xcode (with Command Line Tools)
-- Optional: `xcodegen` (recommended when files/config change)
+- Xcode + Command Line Tools
+- optional: `xcodegen` (recommended after project spec changes)
 
 ### Open in Xcode
 
@@ -94,13 +130,13 @@ Reference files:
 open HTMLContentCreator.xcodeproj
 ```
 
-### Regenerate project (if needed)
+### Regenerate project (optional)
 
 ```bash
 xcodegen generate
 ```
 
-### Build from CLI
+### Build (CLI)
 
 ```bash
 xcodebuild -project HTMLContentCreator.xcodeproj \
@@ -109,7 +145,7 @@ xcodebuild -project HTMLContentCreator.xcodeproj \
   build
 ```
 
-### Run tests
+### Test (CLI)
 
 ```bash
 xcodebuild -project HTMLContentCreator.xcodeproj \
@@ -118,26 +154,31 @@ xcodebuild -project HTMLContentCreator.xcodeproj \
   test
 ```
 
-Current automated suite: 18 tests (unit + integration).
+## HTML/PDF Notes
 
-## Notes on HTML/PDF Export
+- Native PDF export is generated from WebKit and written directly under Application Support.
+- Generated HTML contains an in-page `Export PDF` button (`window.print`) with print-specific CSS.
+- HTML edit mode supports local fallback downloads for:
+  - `order_<project>.md`
+  - `notes_<project>.md`
 
-- App-side PDF export uses a native WebKit pipeline and writes directly to Application Support.
-- Generated HTML also includes an `Export PDF` action (`window.print`) with print-specific styling.
-- HTML edit mode supports order/notes editing and downloads fallback files (`order_<project>.md`, `notes_<project>.md`).
+## Logging Notes
 
-## Known Limitations
+- Capture logs are intentionally quieter at app level (`debug` for verbose navigation/cleanup traces).
+- Some `WebContent[...]` logs in Xcode come from system WebKit processes and are often benign.
+- Typical non-blocking noise:
+  - tracking/query-parameter filtering warnings,
+  - cancelled subframe loads (`NSURLErrorDomain -999`),
+  - sandbox/entitlement warnings in debug contexts.
 
-- Web rendering can differ by website (dynamic content, anti-bot flows, CSP, lazy loading).
-- Cookie banner dismissal is heuristic-based.
-- In sandboxed/test contexts, WebKit may log entitlement warnings that do not necessarily indicate functional failure.
+If the final PNG/PDF output is correct, these logs usually do not require action.
 
-## App Icon
+## App Icon and Branding
 
-The app icon set is included in:
+Icon set:
 
-`HTMLContentCreator/Assets.xcassets/AppIcon.appiconset`
+- `HTMLContentCreator/Assets.xcassets/AppIcon.appiconset`
 
-Master branding source:
+Master source:
 
-`HTMLContentCreator/Resources/Branding/LogoMaster-1024.png`
+- `HTMLContentCreator/Resources/Branding/LogoMaster-1024.png`

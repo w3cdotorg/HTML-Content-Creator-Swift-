@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PDFKit
 import XCTest
@@ -20,9 +21,6 @@ final class PDFDeckExporterIntegrationTests: XCTestCase {
     }
 
     func testPDFExportUsesLandscapeA4AndOnePagePerSlidePlusTitle() async throws {
-        let fixtureRoot = workspaceRoot().appendingPathComponent("old/screenshots", isDirectory: true)
-        try XCTSkipIf(!fileManager.fileExists(atPath: fixtureRoot.path), "Missing old/ screenshot fixtures.")
-
         let paths = WorkspacePaths(root: tempRoot)
         try paths.ensureBaseDirectories(fileManager: fileManager)
         let store = LegacyFileStore(paths: paths, fileManager: fileManager)
@@ -40,15 +38,18 @@ final class PDFDeckExporterIntegrationTests: XCTestCase {
             capturedAt: Date(timeIntervalSince1970: 1_738_594_288)
         )
 
+        let firstPNG = try XCTUnwrap(samplePNGData(fill: .systemBlue))
+        let secondPNG = try XCTUnwrap(samplePNGData(fill: .systemOrange))
+
         _ = try await store.writeCaptureImage(
             projectName: WorkspacePaths.defaultProjectName,
             filename: firstCapture.filename,
-            pngData: fixtureData(root: fixtureRoot, filename: firstCapture.filename)
+            pngData: firstPNG
         )
         _ = try await store.writeCaptureImage(
             projectName: WorkspacePaths.defaultProjectName,
             filename: secondCapture.filename,
-            pngData: fixtureData(root: fixtureRoot, filename: secondCapture.filename)
+            pngData: secondPNG
         )
 
         try await store.appendCaptureLog(projectName: WorkspacePaths.defaultProjectName, capture: firstCapture)
@@ -87,15 +88,34 @@ final class PDFDeckExporterIntegrationTests: XCTestCase {
         XCTAssertTrue(hasLinkURL(secondSlidePage, containing: "luiscardoso.dev"))
     }
 
-    private func workspaceRoot() -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-    }
+    private func samplePNGData(fill: NSColor) -> Data? {
+        let width = Int(WebKitCaptureEngine.viewport.width)
+        let height = Int(WebKitCaptureEngine.viewport.height)
+        guard
+            let rep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: width,
+                pixelsHigh: height,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            )
+        else {
+            return nil
+        }
 
-    private func fixtureData(root: URL, filename: String) throws -> Data {
-        let path = root.appendingPathComponent(filename)
-        return try Data(contentsOf: path)
+        NSGraphicsContext.saveGraphicsState()
+        let context = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current = context
+        fill.setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: width, height: height)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        return rep.representation(using: .png, properties: [:])
     }
 
     private func hasImageLinkAnnotation(_ page: PDFPage) -> Bool {

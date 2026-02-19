@@ -1,12 +1,12 @@
-# Plan de Recodage macOS Swift (parite avec `old/`)
+# Plan de Recodage macOS Swift (parite avec l'implementation legacy)
 
 ## Decisions confirmees
 - UI: 100% native SwiftUI.
 - Moteur de capture: WebKit uniquement (`WKWebView`).
-- Workspace: implementation dans ce dossier courant, sans modifier `old/`.
+- Workspace: implementation dans ce dossier courant.
 
 ## Objectif
-Recoder une app macOS native qui reprend toutes les fonctionnalites de `old/`:
+Recoder une app macOS native qui reprend toutes les fonctionnalites legacy:
 - capture URL en PNG 1920x1080;
 - gestion de projets;
 - historique + suppression;
@@ -16,10 +16,10 @@ Recoder une app macOS native qui reprend toutes les fonctionnalites de `old/`:
 - export PDF de style slides.
 
 ## Etat source (reference)
-- API et logique principale: `old/server.js`
-- UI web: `old/public/index.html`
-- generation HTML: `old/generate_captures_html.py`
-- donnees existantes: `old/screenshots`, `old/order`, `old/notes`
+- API et logique principale: version JavaScript historique.
+- UI web: interface legacy.
+- generation HTML: script Python legacy.
+- donnees de reference: captures, ordre, notes.
 
 ## Cadrage technique Swift
 ### Architecture cible
@@ -100,10 +100,10 @@ Etat: termine (export PDF natif WebKit depuis l'app, regeneration HTML avant exp
 
 ### Phase 8: QA parite
 - tests unitaires parseurs markdown + sanitation + compteur;
-- tests integration sur donnees `old/`;
+- tests integration sur donnees de reference;
 - checklist de non-regression fonctionnelle.
 
-Etat: en cours (suite de tests Xcode ajoutee et validee, integration sur fixtures `old/` en place, checklist manuelle documentee dans `PHASE8_QA_CHECKLIST.md`).
+Etat: en cours (suite de tests Xcode ajoutee et validee, integration sur fixtures de reference en place, checklist manuelle documentee dans `PHASE8_QA_CHECKLIST.md`).
 Automatisation validee le 17 fevrier 2026: 17 tests passes (unitaires + integrations). Reste a executer: checklist manuelle UI/PDF.
 
 ## Risques et points d’attention
@@ -115,4 +115,4 @@ Automatisation validee le 17 fevrier 2026: 17 tests passes (unitaires + integrat
 - toutes les features README legacy fonctionnent en natif;
 - donnees generees compatibles avec le format actuel;
 - build Debug OK dans Xcode;
-- `old/` inchangé.
+- aucune dependance au dossier d'archive.

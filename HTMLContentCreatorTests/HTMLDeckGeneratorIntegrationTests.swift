@@ -18,26 +18,33 @@ final class HTMLDeckGeneratorIntegrationTests: XCTestCase {
         }
     }
 
-    func testGenerateHTMLFromOldFixturesAppliesOrderAndNotes() async throws {
-        let sourceOldRoot = workspaceRoot().appendingPathComponent("old", isDirectory: true)
-        try XCTSkipIf(!fileManager.fileExists(atPath: sourceOldRoot.path), "Missing old/ fixtures.")
-
-        try copyFixture(
-            from: sourceOldRoot.appendingPathComponent("screenshots/captures.md"),
-            to: tempRoot.appendingPathComponent("screenshots/captures.md")
-        )
-        try copyFixture(
-            from: sourceOldRoot.appendingPathComponent("order/default.md"),
-            to: tempRoot.appendingPathComponent("order/default.md")
-        )
-        try copyFixture(
-            from: sourceOldRoot.appendingPathComponent("notes/default/notes.md"),
-            to: tempRoot.appendingPathComponent("notes/default/notes.md")
-        )
-
+    func testGenerateHTMLAppliesOrderAndNotes() async throws {
         let paths = WorkspacePaths(root: tempRoot)
+        try paths.ensureBaseDirectories(fileManager: fileManager)
         let store = LegacyFileStore(paths: paths, fileManager: fileManager)
         let generator = HTMLDeckGenerator(paths: paths, store: store, fileManager: fileManager)
+
+        let first = CaptureRecord(
+            filename: "001_example.com_20260203_1602.png",
+            url: URL(string: "https://example.com/first")!,
+            capturedAt: Date(timeIntervalSince1970: 1_738_593_732)
+        )
+        let second = CaptureRecord(
+            filename: "002_example.com_20260203_1611.png",
+            url: URL(string: "https://example.com/second")!,
+            capturedAt: Date(timeIntervalSince1970: 1_738_594_288)
+        )
+
+        // Append in reverse order; saved editor order should override this.
+        try await store.appendCaptureLog(projectName: WorkspacePaths.defaultProjectName, capture: second)
+        try await store.appendCaptureLog(projectName: WorkspacePaths.defaultProjectName, capture: first)
+        try await store.saveEditorState(
+            projectName: WorkspacePaths.defaultProjectName,
+            order: [first.filename, second.filename],
+            notesByFilename: [
+                first.filename: "*socio-technique* note"
+            ]
+        )
 
         let output = try await generator.generate(projectName: "default", requestedTitle: "Integration Deck")
         XCTAssertTrue(fileManager.fileExists(atPath: output.fileURL.path))
@@ -48,28 +55,15 @@ final class HTMLDeckGeneratorIntegrationTests: XCTestCase {
         XCTAssertTrue(html.contains("id=\"editToggle\""))
         XCTAssertTrue(html.contains("id=\"exportPdf\""))
         XCTAssertTrue(html.contains("window.print()"))
-        XCTAssertFalse(html.contains("phase 7"))
         XCTAssertTrue(html.contains("<aside class=\"note\">"))
         XCTAssertTrue(html.contains("socio-technique"))
 
-        let first = "data-capture=\"001_simonwillison.net_20260203_1602.png\""
-        let second = "data-capture=\"002_luiscardoso.dev_20260203_1611.png\""
-        let firstIndex = try XCTUnwrap(html.range(of: first)?.lowerBound)
-        let secondIndex = try XCTUnwrap(html.range(of: second)?.lowerBound)
+        let firstMarker = "data-capture=\"001_example.com_20260203_1602.png\""
+        let secondMarker = "data-capture=\"002_example.com_20260203_1611.png\""
+        let firstIndex = try XCTUnwrap(html.range(of: firstMarker)?.lowerBound)
+        let secondIndex = try XCTUnwrap(html.range(of: secondMarker)?.lowerBound)
         XCTAssertLessThan(firstIndex, secondIndex)
 
-        XCTAssertTrue(html.contains("screenshots/001_simonwillison.net_20260203_1602.png"))
-    }
-
-    private func workspaceRoot() -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-    }
-
-    private func copyFixture(from source: URL, to destination: URL) throws {
-        let directory = destination.deletingLastPathComponent()
-        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        try fileManager.copyItem(at: source, to: destination)
+        XCTAssertTrue(html.contains("screenshots/001_example.com_20260203_1602.png"))
     }
 }

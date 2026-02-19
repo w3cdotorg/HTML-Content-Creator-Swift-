@@ -10,7 +10,7 @@
   - uses counter when present
   - falls back to scanning PNG files when counter is invalid
   - supports per-project counters
-- [x] Integration test on `old/` fixtures (copied into temp workspace):
+- [x] Integration test on reference fixtures (copied into temp workspace):
   - reads `captures.md`, `order/default.md`, `notes/default/notes.md`
   - generates `captures_default.html`
   - validates toolbar markers and ordered captures

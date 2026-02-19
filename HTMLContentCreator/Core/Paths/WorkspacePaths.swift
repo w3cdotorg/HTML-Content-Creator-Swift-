@@ -11,7 +11,6 @@ struct WorkspacePaths {
     var notesDirectory: URL { root.appendingPathComponent("notes", isDirectory: true) }
     var generatedHTMLDirectory: URL { root }
     var generatedPDFDirectory: URL { root }
-    var oldReferenceDirectory: URL { root.appendingPathComponent("old", isDirectory: true) }
 
     init(root: URL = WorkspacePaths.defaultRootURL()) {
         self.root = root
