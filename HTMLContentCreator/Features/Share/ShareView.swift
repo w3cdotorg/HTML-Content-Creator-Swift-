@@ -50,11 +50,13 @@ struct ShareView: View {
                                     await appState.generateHTMLForActiveProject()
                                 }
                             }
+                            .accessibilityIdentifier("share.generate.html.button")
                             .disabled(appState.startupState != .ready || appState.htmlGenerationState == .generating)
 
                             Button("Open HTML") {
                                 appState.openGeneratedHTML()
                             }
+                            .accessibilityIdentifier("share.open.html.button")
                             .disabled(appState.generatedHTMLURL == nil)
 
                             if appState.htmlGenerationState == .generating {
@@ -70,11 +72,13 @@ struct ShareView: View {
                                     await appState.exportPDFForActiveProject()
                                 }
                             }
+                            .accessibilityIdentifier("share.generate.pdf.button")
                             .disabled(appState.startupState != .ready || appState.pdfExportState == .exporting)
 
                             Button("Open PDF") {
                                 appState.openGeneratedPDF()
                             }
+                            .accessibilityIdentifier("share.open.pdf.button")
                             .disabled(appState.generatedPDFURL == nil)
 
                             if appState.pdfExportState == .exporting {
@@ -88,12 +92,14 @@ struct ShareView: View {
                             ShareLink(item: shareURL) {
                                 Label("Share…", systemImage: "square.and.arrow.up")
                             }
+                            .accessibilityIdentifier("share.sharelink")
                         } else {
                             Button {
                                 appState.notifyInfo("Generate HTML or PDF before sharing.")
                             } label: {
                                 Label("Share…", systemImage: "square.and.arrow.up")
                             }
+                            .accessibilityIdentifier("share.sharelink")
                             .disabled(true)
                         }
                     }

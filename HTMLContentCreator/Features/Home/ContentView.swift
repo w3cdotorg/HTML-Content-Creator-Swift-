@@ -16,9 +16,11 @@ struct ContentView: View {
                     sidebarPills(for: section)
                 }
                 .tag(section)
+                .accessibilityIdentifier("sidebar.section.\(section.rawValue)")
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 220, ideal: 240)
+            .accessibilityIdentifier("sidebar.list")
         } detail: {
             VStack(alignment: .leading, spacing: 12) {
                 if let feedback = appState.feedback {
@@ -44,6 +46,7 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "camera")
                 }
+                .accessibilityIdentifier("toolbar.capture")
                 .help("Capture clipboard URL or open Capture")
                 .disabled(appState.startupState != .ready || appState.captureState == .capturing)
 
@@ -55,12 +58,14 @@ struct ContentView: View {
                 } label: {
                     Label("PDF", systemImage: "doc.richtext")
                 }
+                .accessibilityIdentifier("toolbar.export.pdf")
                 .disabled(appState.startupState != .ready || appState.pdfExportState == .exporting)
 
                 if let shareURL = appState.generatedPDFURL ?? appState.generatedHTMLURL {
                     ShareLink(item: shareURL) {
                         Image(systemName: "square.and.arrow.up")
                     }
+                    .accessibilityIdentifier("toolbar.share")
                     .help("Share latest generated output")
                 } else {
                     Button {
@@ -68,6 +73,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                     }
+                    .accessibilityIdentifier("toolbar.share")
                     .help("Share")
                     .disabled(true)
                 }

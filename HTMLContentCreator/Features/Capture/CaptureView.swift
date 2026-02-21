@@ -18,6 +18,7 @@ struct CaptureView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle("Block ads and consent banners (MVP)", isOn: $appState.captureContentBlockingEnabled)
                             .toggleStyle(.switch)
+                            .accessibilityIdentifier("capture.blocking.toggle")
 
                         Text("Uses native WebKit content rules before the existing JavaScript cleanup fallback.")
                             .font(.footnote)
@@ -25,6 +26,7 @@ struct CaptureView: View {
 
                         TextField("https://example.com", text: $appState.captureURLInput)
                             .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("capture.url.textfield")
 
                         HStack(spacing: 10) {
                             Button("Capture (1920x1080)") {
@@ -32,6 +34,7 @@ struct CaptureView: View {
                                     await appState.captureCurrentURL()
                                 }
                             }
+                            .accessibilityIdentifier("capture.run.button")
                             .disabled(appState.startupState != .ready || appState.captureState == .capturing || appState.isBatchCaptureRunning)
 
                             if appState.captureState == .capturing {
@@ -50,6 +53,7 @@ struct CaptureView: View {
                             Button("Import URL List…") {
                                 showingBatchFileImporter = true
                             }
+                            .accessibilityIdentifier("capture.batch.import.button")
                             .disabled(appState.captureState == .capturing)
 
                             Button("Start Batch Capture") {
@@ -57,11 +61,13 @@ struct CaptureView: View {
                                     await appState.startBatchCapture()
                                 }
                             }
+                            .accessibilityIdentifier("capture.batch.start.button")
                             .disabled(!appState.canStartBatchCapture)
 
                             Button("Clear List") {
                                 appState.clearBatchCaptureList()
                             }
+                            .accessibilityIdentifier("capture.batch.clear.button")
                             .disabled(appState.batchCaptureURLs.isEmpty || appState.isBatchCaptureRunning)
                         }
 

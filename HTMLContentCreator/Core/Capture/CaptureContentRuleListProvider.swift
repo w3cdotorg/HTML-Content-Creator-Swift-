@@ -11,6 +11,10 @@ enum CaptureContentRuleListProvider {
         CaptureContentBlockingRules.rules.count
     }
 
+    nonisolated static var blocklistDomainCount: Int {
+        CaptureBlocklistProjectDomains.allDomains.count
+    }
+
     private static let store = WKContentRuleListStore.default()
     private static var cachedRuleList: WKContentRuleList?
     private static var compilationTask: Task<WKContentRuleList?, Never>?
@@ -90,9 +94,19 @@ enum CaptureContentRuleListProvider {
 }
 
 private enum CaptureContentBlockingRules {
-    static let identifier = "com.swiftgpt.htmlcontentcreator.capture.contentblocking.v2"
+    static let identifier = "com.swiftgpt.htmlcontentcreator.capture.contentblocking.v4"
 
-    static let rules: [ContentRule] = [
+    static let rules: [ContentRule] = {
+        var resolvedRules = baseRules
+        resolvedRules.append(
+            contentsOf: makeDomainBlockRules(
+                domains: Array(CaptureBlocklistProjectDomains.allDomains).sorted()
+            )
+        )
+        return resolvedRules
+    }()
+
+    static let baseRules: [ContentRule] = [
         ContentRule(
             trigger: Trigger(
                 urlFilter: #"https?://([a-z0-9-]+\.)?(doubleclick\.net|googlesyndication\.com|adservice\.google\.com|amazon-adsystem\.com|adsrvr\.org|criteo\.com|taboola\.com|outbrain\.com|quantserve\.com|scorecardresearch\.com|teads\.tv|teads\.com|smartadserver\.com|adnxs\.com|pubmatic\.com|rubiconproject\.com|openx\.net|adform\.net|2mdn\.net)/.*"#,
@@ -111,7 +125,7 @@ private enum CaptureContentBlockingRules {
         ),
         ContentRule(
             trigger: Trigger(
-                urlFilter: #"https?://([a-z0-9-]+\.)?(google-analytics\.com|googletagmanager\.com|connect\.facebook\.net|analytics\.twitter\.com|hotjar\.com|newrelic\.com|segment\.com|mixpanel\.com)/.*"#,
+                urlFilter: #"https?://([a-z0-9-]+\.)?(google-analytics\.com|googletagmanager\.com|connect\.facebook\.net|hotjar\.com|newrelic\.com|segment\.com|mixpanel\.com)/.*"#,
                 resourceType: [.script, .raw, .image],
                 loadType: [.thirdParty]
             ),
@@ -157,6 +171,44 @@ private enum CaptureContentBlockingRules {
             )
         )
     ]
+
+    static func makeDomainBlockRules(domains: [String]) -> [ContentRule] {
+        guard !domains.isEmpty else { return [] }
+
+        let chunkSize = 48
+        var generated: [ContentRule] = []
+        generated.reserveCapacity((domains.count / chunkSize) + 1)
+
+        var index = 0
+        while index < domains.count {
+            let upperBound = min(index + chunkSize, domains.count)
+            let chunk = domains[index..<upperBound]
+            let alternation = chunk
+                .map(escapeDomainForRegex)
+                .joined(separator: "|")
+
+            let pattern = "https?://([a-z0-9-]+\\.)?(?:\(alternation))(?:[:/]|$)"
+            generated.append(
+                ContentRule(
+                    trigger: Trigger(
+                        urlFilter: pattern,
+                        resourceType: [.script, .image, .styleSheet, .raw, .media, .svgDocument, .font],
+                        loadType: [.thirdParty]
+                    ),
+                    action: Action(type: .block)
+                )
+            )
+
+            index = upperBound
+        }
+
+        return generated
+    }
+
+    static func escapeDomainForRegex(_ domain: String) -> String {
+        let escaped = NSRegularExpression.escapedPattern(for: domain)
+        return escaped.replacingOccurrences(of: "\\*", with: ".*")
+    }
 
     static let encodedRuleList: String = {
         let encoder = JSONEncoder()

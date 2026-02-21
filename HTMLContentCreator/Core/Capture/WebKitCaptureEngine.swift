@@ -23,6 +23,24 @@ private final class CaptureWindow: NSWindow {
 
 @MainActor
 private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
+    private struct CleanupMetrics {
+        var clicked = 0
+        var suppressed = 0
+        var dismissed = 0
+        var jsFailures = 0
+
+        var hasActivity: Bool {
+            clicked > 0 || suppressed > 0 || dismissed > 0 || jsFailures > 0
+        }
+
+        mutating func accumulate(_ other: CleanupMetrics) {
+            clicked += other.clicked
+            suppressed += other.suppressed
+            dismissed += other.dismissed
+            jsFailures += other.jsFailures
+        }
+    }
+
     private struct DOMSnapshotState {
         let ready: Bool
         let nodes: Int
@@ -39,6 +57,28 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
             if mediaCount >= 6 { return true }
             if headingCount >= 1 && textLength >= 40 { return true }
             return false
+        }
+    }
+
+    private struct DOMStabilityState {
+        let ready: Bool
+        let nodes: Int
+        let textLength: Int
+        let mediaCount: Int
+        let imagesTotal: Int
+        let imagesLoaded: Int
+        let mutationIdleMilliseconds: Int
+
+        var sample: CaptureDOMStabilitySample {
+            CaptureDOMStabilitySample(
+                ready: ready,
+                nodes: nodes,
+                textLength: textLength,
+                mediaCount: mediaCount,
+                imagesTotal: imagesTotal,
+                imagesLoaded: imagesLoaded,
+                mutationIdleMilliseconds: mutationIdleMilliseconds
+            )
         }
     }
 
@@ -103,25 +143,49 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
 
         await prepareContentBlocking()
 
-        let strictMode = shouldUseStrictCapturePath(for: url)
+        let profile = CaptureSiteProfileResolver.resolve(for: url)
+        let strictMode = profile.strictSnapshotMode
         webView.customUserAgent = strictMode ? nil : Self.desktopSafariUserAgent
+        AppLogger.capture.debug(
+            "Capture profile=\(profile.identifier.rawValue, privacy: .public), host=\(url.host ?? "<unknown>", privacy: .public)"
+        )
+
         try await loadPage(
             url: url,
-            timeoutSeconds: strictMode ? 70 : 90,
-            allowCommitFallback: strictMode,
-            commitFallbackDelaySeconds: strictMode ? 22 : 8
+            timeoutSeconds: profile.navigationTimeoutSeconds,
+            allowCommitFallback: profile.allowCommitFallback,
+            commitFallbackDelaySeconds: profile.commitFallbackDelaySeconds
         )
 
         if strictMode {
             AppLogger.capture.debug("Using strict capture mode for host: \(url.host ?? "<unknown>")")
-            try await Task.sleep(nanoseconds: 3_000_000_000)
-            await dismissCookieBannersForStrictHost(url: url, maxAttempts: 2, pauseNanoseconds: 500_000_000)
-            await waitForHostSpecificReadiness(url: url, timeoutSeconds: 8)
+            try await Task.sleep(nanoseconds: profile.initialPostLoadDelayNanoseconds)
+            await runPostLoadCleanupPasses(
+                url: url,
+                profile: profile,
+                passCount: profile.postLoadCleanupPassCount,
+                pauseNanoseconds: profile.postLoadCleanupPauseNanoseconds
+            )
+
+            if profile.hostReadinessTimeoutSeconds > 0 {
+                await waitForHostSpecificReadiness(url: url, timeoutSeconds: profile.hostReadinessTimeoutSeconds)
+            }
+
+            await waitForStableDOM(
+                timeoutSeconds: profile.domStabilityTimeoutSeconds,
+                minimumMutationIdleMilliseconds: profile.domMutationIdleMilliseconds,
+                requiredStableSamples: profile.domStabilitySampleCount
+            )
 
             var image = try await captureSnapshot(strictMode: true)
             if isLikelyBlankCapture(image) {
                 AppLogger.capture.debug("Strict mode produced a blank snapshot, retrying after visible render pass.")
-                await dismissCookieBannersForStrictHost(url: url, maxAttempts: 1, pauseNanoseconds: 350_000_000)
+                await runPostLoadCleanupPasses(
+                    url: url,
+                    profile: profile,
+                    passCount: profile.finalCleanupPassCount,
+                    pauseNanoseconds: profile.finalCleanupPauseNanoseconds
+                )
                 try await forceVisibleRenderPass()
                 image = try await captureSnapshot(strictMode: true)
             }
@@ -132,18 +196,27 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
             return pngData
         }
 
-        try await Task.sleep(nanoseconds: 2_000_000_000)
-        await dismissCookieBanners(maxAttempts: 10, pauseNanoseconds: 280_000_000)
-        await dismissWordPressCookieBanners(url: url, maxAttempts: 5, pauseNanoseconds: 320_000_000)
-        await dismissLeMondeAdSlots(url: url, maxAttempts: 4, pauseNanoseconds: 280_000_000)
+        try await Task.sleep(nanoseconds: profile.initialPostLoadDelayNanoseconds)
+        await runPostLoadCleanupPasses(
+            url: url,
+            profile: profile,
+            passCount: profile.postLoadCleanupPassCount,
+            pauseNanoseconds: profile.postLoadCleanupPauseNanoseconds
+        )
+
         try await Task.sleep(nanoseconds: 300_000_000)
         await ensureDocumentVisibilitySignals()
         await kickDynamicRendering(aggressive: false)
-        if shouldUseAggressiveHydrationKick(for: url) {
+        if profile.aggressiveHydrationKick {
             await kickDynamicRendering(aggressive: true)
             try? await Task.sleep(nanoseconds: 800_000_000)
         }
-        await waitForMeaningfulDOMContent(timeoutSeconds: 6)
+        await waitForMeaningfulDOMContent(timeoutSeconds: profile.meaningfulDOMTimeoutSeconds)
+        await waitForStableDOM(
+            timeoutSeconds: profile.domStabilityTimeoutSeconds,
+            minimumMutationIdleMilliseconds: profile.domMutationIdleMilliseconds,
+            requiredStableSamples: profile.domStabilitySampleCount
+        )
 
         var domState = await readDOMSnapshotState()
         AppLogger.capture.debug(
@@ -156,16 +229,24 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
             try await forceVisibleRenderPass()
             await ensureDocumentVisibilitySignals()
             await kickDynamicRendering(aggressive: true)
-            await waitForMeaningfulDOMContent(timeoutSeconds: 6)
+            await waitForMeaningfulDOMContent(timeoutSeconds: profile.meaningfulDOMTimeoutSeconds)
+            await waitForStableDOM(
+                timeoutSeconds: profile.domStabilityTimeoutSeconds,
+                minimumMutationIdleMilliseconds: profile.domMutationIdleMilliseconds,
+                requiredStableSamples: profile.domStabilitySampleCount
+            )
             domState = await readDOMSnapshotState()
             AppLogger.capture.debug(
                 "DOM after visible pass (nodes=\(domState.nodes), text=\(domState.textLength), interactive=\(domState.interactiveCount))."
             )
         }
 
-        await dismissCookieBanners(maxAttempts: 4, pauseNanoseconds: 220_000_000)
-        await dismissWordPressCookieBanners(url: url, maxAttempts: 2, pauseNanoseconds: 260_000_000)
-        await dismissLeMondeAdSlots(url: url, maxAttempts: 2, pauseNanoseconds: 220_000_000)
+        await runPostLoadCleanupPasses(
+            url: url,
+            profile: profile,
+            passCount: profile.finalCleanupPassCount,
+            pauseNanoseconds: profile.finalCleanupPauseNanoseconds
+        )
 
         var image = try await captureSnapshot()
 
@@ -357,11 +438,34 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
         return state.ready && (state.nodes > 0 || state.textLength > 0 || state.mediaCount > 0 || state.headingCount > 0)
     }
 
-    private func dismissCookieBanners(maxAttempts: Int, pauseNanoseconds: UInt64) async {
-        guard maxAttempts > 0 else { return }
+    private func runPostLoadCleanupPasses(
+        url: URL,
+        profile: CaptureSiteProfile,
+        passCount: Int,
+        pauseNanoseconds: UInt64
+    ) async {
+        guard passCount > 0 else { return }
 
-        var totalClicked = 0
-        var totalSuppressed = 0
+        var aggregate = CleanupMetrics()
+        for _ in 0..<passCount {
+            aggregate.accumulate(await dismissCookieBanners(maxAttempts: 1, pauseNanoseconds: 0))
+            aggregate.accumulate(await dismissDomainSpecificOverlays(url: url, profile: profile, maxAttempts: 1, pauseNanoseconds: 0))
+
+            if pauseNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            }
+        }
+
+        guard aggregate.hasActivity else { return }
+        AppLogger.capture.debug(
+            "Cleanup passes=\(passCount), profile=\(profile.identifier.rawValue), clicked=\(aggregate.clicked), suppressed=\(aggregate.suppressed), dismissed=\(aggregate.dismissed), jsFailures=\(aggregate.jsFailures)"
+        )
+    }
+
+    private func dismissCookieBanners(maxAttempts: Int, pauseNanoseconds: UInt64) async -> CleanupMetrics {
+        guard maxAttempts > 0 else { return CleanupMetrics() }
+
+        var metrics = CleanupMetrics()
         var consecutiveFailures = 0
         for _ in 0..<maxAttempts {
             let result = (try? await webView.evaluateJavaScriptAsync(
@@ -370,22 +474,39 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
             )) as? [String: Any]
             if let result {
                 consecutiveFailures = 0
-                let clicked = intValue(result, "clicked")
-                let suppressed = intValue(result, "suppressed")
-                totalClicked += clicked
-                totalSuppressed += suppressed
+                metrics.clicked += intValue(result, "clicked")
+                metrics.suppressed += intValue(result, "suppressed")
             } else {
                 consecutiveFailures += 1
+                metrics.jsFailures += 1
                 if consecutiveFailures >= 2 {
                     AppLogger.capture.debug("Cookie cleanup stopped early after repeated JS evaluation failures.")
                     break
                 }
             }
-            try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            if pauseNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            }
         }
 
-        if totalClicked > 0 || totalSuppressed > 0 {
-            AppLogger.capture.debug("Cookie cleanup: clicked=\(totalClicked), suppressed=\(totalSuppressed)")
+        return metrics
+    }
+
+    private func dismissDomainSpecificOverlays(
+        url: URL,
+        profile: CaptureSiteProfile,
+        maxAttempts: Int,
+        pauseNanoseconds: UInt64
+    ) async -> CleanupMetrics {
+        switch profile.domainCleanupMode {
+        case .none:
+            return CleanupMetrics()
+        case .nyTimesLightweight:
+            return await dismissCookieBannersForStrictHost(url: url, maxAttempts: maxAttempts, pauseNanoseconds: pauseNanoseconds)
+        case .wordPressCookies:
+            return await dismissWordPressCookieBanners(url: url, maxAttempts: maxAttempts, pauseNanoseconds: pauseNanoseconds)
+        case .leMondeAds:
+            return await dismissLeMondeAdSlots(url: url, maxAttempts: maxAttempts, pauseNanoseconds: pauseNanoseconds)
         }
     }
 
@@ -629,6 +750,84 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
         )
     }
 
+    private func waitForStableDOM(
+        timeoutSeconds: UInt64,
+        minimumMutationIdleMilliseconds: Int,
+        requiredStableSamples: Int
+    ) async {
+        guard requiredStableSamples > 0 else { return }
+
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutSeconds))
+        var stableSamples = 0
+        var previous: DOMStabilityState?
+
+        while Date() < deadline {
+            let state = await readDOMStabilityState()
+            let sample = state.sample
+
+            guard CaptureReadinessHeuristics.isSampleReadyForStabilityCheck(
+                sample,
+                minimumMutationIdleMilliseconds: minimumMutationIdleMilliseconds
+            ) else {
+                previous = state
+                stableSamples = 0
+                try? await Task.sleep(nanoseconds: 260_000_000)
+                continue
+            }
+
+            if let previous {
+                if CaptureReadinessHeuristics.isStablePair(previous: previous.sample, current: sample) {
+                    stableSamples += 1
+                } else {
+                    stableSamples = 0
+                }
+            } else {
+                stableSamples = 0
+            }
+
+            if stableSamples >= max(1, requiredStableSamples - 1) {
+                AppLogger.capture.debug(
+                    "DOM stabilized: samples=\(stableSamples + 1), nodes=\(state.nodes), text=\(state.textLength), loadedImages=\(state.imagesLoaded)/\(state.imagesTotal), idleMs=\(state.mutationIdleMilliseconds)"
+                )
+                return
+            }
+
+            previous = state
+            try? await Task.sleep(nanoseconds: 260_000_000)
+        }
+
+        AppLogger.capture.debug("DOM stability wait ended by timeout (\(timeoutSeconds)s).")
+    }
+
+    private func readDOMStabilityState() async -> DOMStabilityState {
+        guard
+            let raw = (try? await webView.evaluateJavaScriptAsync(
+                Self.domStabilityStateScript,
+                timeoutNanoseconds: 1_800_000_000
+            )) as? [String: Any]
+        else {
+            return DOMStabilityState(
+                ready: false,
+                nodes: 0,
+                textLength: 0,
+                mediaCount: 0,
+                imagesTotal: 0,
+                imagesLoaded: 0,
+                mutationIdleMilliseconds: 0
+            )
+        }
+
+        return DOMStabilityState(
+            ready: boolValue(raw, "ready"),
+            nodes: intValue(raw, "nodes"),
+            textLength: intValue(raw, "text"),
+            mediaCount: intValue(raw, "media"),
+            imagesTotal: intValue(raw, "imagesTotal"),
+            imagesLoaded: intValue(raw, "imagesLoaded"),
+            mutationIdleMilliseconds: intValue(raw, "mutationIdleMs")
+        )
+    }
+
     private func ensureDocumentVisibilitySignals() async {
         _ = try? await webView.evaluateJavaScriptAsync(Self.forceDocumentVisibleScript)
     }
@@ -639,74 +838,81 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
         _ = try? await webView.evaluateJavaScriptAsync(Self.aggressiveRevealScript)
     }
 
-    private func shouldUseAggressiveHydrationKick(for url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return host == "openclaw.ai" || host.hasSuffix(".openclaw.ai")
-    }
+    private func dismissWordPressCookieBanners(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async -> CleanupMetrics {
+        guard CaptureSiteProfileResolver.resolve(for: url).domainCleanupMode == .wordPressCookies, maxAttempts > 0 else {
+            return CleanupMetrics()
+        }
 
-    private func shouldUseStrictCapturePath(for url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return host == "nytimes.com" || host.hasSuffix(".nytimes.com")
-    }
-
-    private func shouldUseWordPressCookieCleanup(for url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return host == "wordpress.com" || host.hasSuffix(".wordpress.com")
-    }
-
-    private func shouldUseLeMondeAdCleanup(for url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        return host == "lemonde.fr" || host.hasSuffix(".lemonde.fr")
-    }
-
-    private func dismissWordPressCookieBanners(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async {
-        guard shouldUseWordPressCookieCleanup(for: url), maxAttempts > 0 else { return }
-        var clicked = 0
-        var suppressed = 0
+        var metrics = CleanupMetrics()
         for _ in 0..<maxAttempts {
             let result = (try? await webView.evaluateJavaScriptAsync(
                 Self.wordPressCookieDismissScript,
                 timeoutNanoseconds: 1_600_000_000
             )) as? [String: Any]
-            clicked += intValue(result ?? [:], "clicked")
-            suppressed += intValue(result ?? [:], "suppressed")
-            try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            if let result {
+                metrics.clicked += intValue(result, "clicked")
+                metrics.suppressed += intValue(result, "suppressed")
+            } else {
+                metrics.jsFailures += 1
+            }
+
+            if pauseNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            }
         }
-        AppLogger.capture.debug("WordPress cookie cleanup: clicked=\(clicked), suppressed=\(suppressed)")
+        return metrics
     }
 
-    private func dismissLeMondeAdSlots(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async {
-        guard shouldUseLeMondeAdCleanup(for: url), maxAttempts > 0 else { return }
-        var suppressed = 0
+    private func dismissLeMondeAdSlots(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async -> CleanupMetrics {
+        guard CaptureSiteProfileResolver.resolve(for: url).domainCleanupMode == .leMondeAds, maxAttempts > 0 else {
+            return CleanupMetrics()
+        }
+
+        var metrics = CleanupMetrics()
         for _ in 0..<maxAttempts {
             let result = (try? await webView.evaluateJavaScriptAsync(
                 Self.leMondeAdCleanupScript,
                 timeoutNanoseconds: 1_500_000_000
             )) as? [String: Any]
-            suppressed += intValue(result ?? [:], "suppressed")
-            try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            if let result {
+                metrics.suppressed += intValue(result, "suppressed")
+            } else {
+                metrics.jsFailures += 1
+            }
+
+            if pauseNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            }
         }
-        AppLogger.capture.debug("LeMonde ad cleanup: suppressed=\(suppressed)")
+        return metrics
     }
 
-    private func dismissCookieBannersForStrictHost(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async {
-        guard shouldUseStrictCapturePath(for: url), maxAttempts > 0 else { return }
-        var dismissed = 0
+    private func dismissCookieBannersForStrictHost(url: URL, maxAttempts: Int, pauseNanoseconds: UInt64) async -> CleanupMetrics {
+        guard CaptureSiteProfileResolver.resolve(for: url).domainCleanupMode == .nyTimesLightweight, maxAttempts > 0 else {
+            return CleanupMetrics()
+        }
+
+        var metrics = CleanupMetrics()
         for _ in 0..<maxAttempts {
             let result = (try? await webView.evaluateJavaScriptAsync(
                 Self.nyTimesLightweightCleanupScript,
                 timeoutNanoseconds: 1_200_000_000
             )) as? [String: Any]
-            dismissed += intValue(result ?? [:], "dismissed")
-            try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            if let result {
+                metrics.dismissed += intValue(result, "dismissed")
+            } else {
+                metrics.jsFailures += 1
+            }
+
+            if pauseNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: pauseNanoseconds)
+            }
         }
-        if dismissed > 0 {
-            AppLogger.capture.debug("Strict host cleanup: dismissed=\(dismissed)")
-        }
+        return metrics
     }
 
     private func waitForHostSpecificReadiness(url: URL, timeoutSeconds: UInt64) async {
-        guard shouldUseStrictCapturePath(for: url) else { return }
+        guard CaptureSiteProfileResolver.resolve(for: url).domainCleanupMode == .nyTimesLightweight else { return }
         let deadline = Date().addingTimeInterval(TimeInterval(timeoutSeconds))
         while Date() < deadline {
             let result = (try? await webView.evaluateJavaScriptAsync(
@@ -1279,6 +1485,65 @@ private final class WebKitCaptureSession: NSObject, WKNavigationDelegate {
         media,
         heading
       };
+    })();
+    """
+
+    private static let domStabilityStateScript = """
+    (() => {
+      try {
+        const globalKey = "__hccDomStability";
+        const now = Date.now();
+
+        if (!window[globalKey]) {
+          const state = { mutationCount: 0, lastMutationAt: now };
+          const observer = new MutationObserver((mutations) => {
+            state.mutationCount += Math.max(1, mutations.length || 1);
+            state.lastMutationAt = Date.now();
+          });
+          if (document.documentElement) {
+            observer.observe(document.documentElement, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              characterData: true
+            });
+          }
+          state.observer = observer;
+          window[globalKey] = state;
+        }
+
+        const state = window[globalKey];
+        const body = document.body;
+        const text = (body?.innerText || "").replace(/\\s+/g, " ").trim().length;
+        const nodes = body ? body.querySelectorAll("*").length : 0;
+        const media = body ? body.querySelectorAll("img,svg,canvas,video,picture").length : 0;
+        const images = body ? Array.from(body.querySelectorAll("img")) : [];
+        const imagesTotal = images.length;
+        const imagesLoaded = images.filter((img) => {
+          if (!(img instanceof HTMLImageElement)) return false;
+          return img.complete && (!!img.currentSrc || img.naturalWidth > 0);
+        }).length;
+
+        return {
+          ready: document.readyState !== "loading",
+          nodes,
+          text,
+          media,
+          imagesTotal,
+          imagesLoaded,
+          mutationIdleMs: Math.max(0, now - (state.lastMutationAt || now))
+        };
+      } catch (err) {
+        return {
+          ready: document.readyState !== "loading",
+          nodes: 0,
+          text: 0,
+          media: 0,
+          imagesTotal: 0,
+          imagesLoaded: 0,
+          mutationIdleMs: 0
+        };
+      }
     })();
     """
 

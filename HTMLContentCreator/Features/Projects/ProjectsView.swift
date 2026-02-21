@@ -22,28 +22,33 @@ struct ProjectsView: View {
                         .pickerStyle(.menu)
                         .frame(maxWidth: 320)
                         .disabled(appState.startupState != .ready)
+                        .accessibilityIdentifier("projects.active.picker")
 
                         HStack(spacing: 10) {
                             TextField("New project (e.g. client-a)", text: $appState.newProjectInput)
                                 .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("projects.new.textfield")
 
                             Button("Create") {
                                 Task {
                                     await appState.createProjectFromInput()
                                 }
                             }
+                            .accessibilityIdentifier("projects.create.button")
                             .disabled(appState.startupState != .ready)
                         }
 
                         HStack(spacing: 10) {
                             TextField("Project title for HTML/PDF", text: $appState.projectTitleInput)
                                 .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("projects.title.textfield")
 
                             Button("Save Title") {
                                 Task {
                                     await appState.saveProjectTitle()
                                 }
                             }
+                            .accessibilityIdentifier("projects.title.save.button")
                             .disabled(appState.startupState != .ready)
                         }
                     }

@@ -71,6 +71,7 @@ struct ExploreAndEditView: View {
                         await appState.refreshEditorState()
                     }
                 }
+                .accessibilityIdentifier("explore.reload.button")
                 .disabled(appState.editorState == .loading || appState.editorState == .saving)
 
                 Button("Save") {
@@ -78,6 +79,7 @@ struct ExploreAndEditView: View {
                         await appState.saveEditorState()
                     }
                 }
+                .accessibilityIdentifier("explore.save.button")
                 .disabled(appState.editorState == .loading || appState.editorState == .saving)
 
             }
@@ -105,6 +107,7 @@ struct ExploreAndEditView: View {
                     }
                 }
                 .listStyle(.inset)
+                .accessibilityIdentifier("explore.items.list")
             }
         }
         .padding(4)
@@ -156,6 +159,7 @@ struct ExploreAndEditView: View {
                     TextEditor(text: noteBinding(for: item.filename))
                         .font(.body.monospaced())
                         .frame(minHeight: 160)
+                        .accessibilityIdentifier("explore.note.editor")
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
