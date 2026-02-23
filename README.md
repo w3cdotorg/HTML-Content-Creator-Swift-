@@ -15,8 +15,19 @@ This Swift rewrite preserves legacy file compatibility while moving the full wor
   - fallback snapshot modes,
   - bitmap/PDF fallback paths for difficult pages.
 - Optional capture-side content blocking switch:
-  - `WKContentRuleList` (MVP),
-  - JavaScript fallback cleanup for cookie banners/overlays.
+  - `WKContentRuleList` + JavaScript fallback cleanup for cookie banners/overlays,
+  - expanded third-party domain blocking from Blocklist Project categories,
+  - deterministic per-category cap to keep `WKContentRuleList` compilation reliable.
+- Batch capture input modes:
+  - upload `.csv` / `.txt` lists (`Upload CSV/TXT`),
+  - paste URL lists directly in-app, then `Save`.
+- URL list normalization and validation:
+  - accepts `http`/`https` URLs,
+  - repairs common scheme typos (for example `htps://`, `https:/`, `https//`),
+  - supports host/path inputs without scheme (for example `emsh.cat/one-human-one-agent-one-browser/`).
+- Safety guard when active project is `default`:
+  - warning dialog before single or batch capture,
+  - `Continue` (save into `default`) or `Create New Project` (opens `Projects`).
 - Host-specific hardening for problematic pages (for example strict path for NYTimes, additional cleanup for WordPress and Le Monde cases).
 - Project workflow:
   - create/select project,
@@ -55,12 +66,13 @@ Sidebar sections:
 Toolbar actions:
 
 - camera: uses clipboard URL (`http/https`) when available, otherwise opens `Capture`
+  - if active project is `default`, a warning is shown before capture starts
 - PDF: direct PDF export
 - Share: share latest generated artifact
 
 Window title always shows the active project:
 
-- `HTML Content Creator - <project>`
+- `HTML Content Creator · <project>`
 
 The sidebar displays green status pills for generated outputs:
 
@@ -96,6 +108,35 @@ Legacy-compatible formats are preserved for:
 - order files
 - notes files
 - project metadata
+
+## Content Blocking Lists
+
+Blocklist source:
+
+- `https://github.com/blocklistproject/Lists`
+
+Included categories:
+
+- `Abuse`
+- `Ads`
+- `Crypto`
+- `Drugs`
+- `Facebook`
+- `Fraud`
+- `Gambling`
+- `Malware`
+- `Phishing`
+- `Porn`
+- `Ransomware`
+- `Redirect`
+- `Scam`
+- `Tracking`
+
+Excluded categories:
+
+- `TikTok`
+- `Torrent`
+- `Twitter`
 
 ## Tech Stack
 
