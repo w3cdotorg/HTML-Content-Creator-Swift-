@@ -287,24 +287,29 @@ final class AppState: ObservableObject {
                 throw AppError.invalidInput("No valid http/https URLs found in \(fileURL.lastPathComponent).")
             }
 
-            batchCaptureURLs = result.urls
-            batchCaptureSourceFileName = fileURL.lastPathComponent
-            batchCaptureState = .ready(
-                sourceName: fileURL.lastPathComponent,
-                totalURLs: result.urls.count,
-                ignoredLines: result.ignoredLineCount,
-                duplicateURLs: result.duplicateCount
-            )
+            applyBatchCaptureImportResult(result, sourceName: fileURL.lastPathComponent)
+        } catch {
+            batchCaptureState = .failed(error.localizedDescription)
+            setFeedback(kind: .error, error.localizedDescription)
+        }
+    }
 
-            let skipped = result.ignoredLineCount + result.duplicateCount
-            if skipped > 0 {
-                setFeedback(
-                    kind: .info,
-                    "Loaded \(result.urls.count) URL(s) from \(fileURL.lastPathComponent). Skipped \(skipped) line(s)."
-                )
-            } else {
-                setFeedback(kind: .success, "Loaded \(result.urls.count) URL(s) from \(fileURL.lastPathComponent).")
+    func saveBatchCaptureList(from text: String) async {
+        guard !isBatchCaptureRunning else {
+            setFeedback(kind: .info, "Batch capture is already running.")
+            return
+        }
+
+        do {
+            let result = await Task.detached(priority: .userInitiated) {
+                BatchCaptureURLListParser.parse(text: text)
+            }.value
+
+            guard !result.urls.isEmpty else {
+                throw AppError.invalidInput("No valid http/https URLs found in pasted text.")
             }
+
+            applyBatchCaptureImportResult(result, sourceName: "Pasted URLs")
         } catch {
             batchCaptureState = .failed(error.localizedDescription)
             setFeedback(kind: .error, error.localizedDescription)
@@ -622,6 +627,27 @@ final class AppState: ObservableObject {
             .filter { $0 != WorkspacePaths.defaultProjectName }
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         return [WorkspacePaths.defaultProjectName] + sortedSecondary
+    }
+
+    private func applyBatchCaptureImportResult(_ result: BatchCaptureURLImportResult, sourceName: String) {
+        batchCaptureURLs = result.urls
+        batchCaptureSourceFileName = sourceName
+        batchCaptureState = .ready(
+            sourceName: sourceName,
+            totalURLs: result.urls.count,
+            ignoredLines: result.ignoredLineCount,
+            duplicateURLs: result.duplicateCount
+        )
+
+        let skipped = result.ignoredLineCount + result.duplicateCount
+        if skipped > 0 {
+            setFeedback(
+                kind: .info,
+                "Loaded \(result.urls.count) URL(s) from \(sourceName). Skipped \(skipped) line(s)."
+            )
+        } else {
+            setFeedback(kind: .success, "Loaded \(result.urls.count) URL(s) from \(sourceName).")
+        }
     }
 
     private func setFeedback(kind: InlineFeedback.Kind, _ message: String) {

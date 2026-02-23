@@ -3,7 +3,30 @@ import UniformTypeIdentifiers
 
 struct CaptureView: View {
     @EnvironmentObject private var appState: AppState
+    let onRequestProjects: () -> Void
+
     @State private var showingBatchFileImporter = false
+    @State private var batchURLTextInput: String = ""
+    @State private var showingDefaultProjectWarning = false
+    @State private var pendingCaptureAction: PendingCaptureAction?
+
+    private enum PendingCaptureAction {
+        case single
+        case batch
+
+        var warningMessage: String {
+            switch self {
+            case .single:
+                return "Capture will be saved in \"default\" project."
+            case .batch:
+                return "Batch capture will be saved in \"default\" project."
+            }
+        }
+    }
+
+    init(onRequestProjects: @escaping () -> Void = {}) {
+        self.onRequestProjects = onRequestProjects
+    }
 
     var body: some View {
         ScrollView {
@@ -30,9 +53,7 @@ struct CaptureView: View {
 
                         HStack(spacing: 10) {
                             Button("Capture (1920x1080)") {
-                                Task {
-                                    await appState.captureCurrentURL()
-                                }
+                                requestCaptureStart(.single)
                             }
                             .accessibilityIdentifier("capture.run.button")
                             .disabled(appState.startupState != .ready || appState.captureState == .capturing || appState.isBatchCaptureRunning)
@@ -50,16 +71,14 @@ struct CaptureView: View {
                 GroupBox("Batch Capture (.txt/.csv)") {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 10) {
-                            Button("Import URL List…") {
+                            Button("Upload CSV/TXT") {
                                 showingBatchFileImporter = true
                             }
                             .accessibilityIdentifier("capture.batch.import.button")
                             .disabled(appState.captureState == .capturing)
 
                             Button("Start Batch Capture") {
-                                Task {
-                                    await appState.startBatchCapture()
-                                }
+                                requestCaptureStart(.batch)
                             }
                             .accessibilityIdentifier("capture.batch.start.button")
                             .disabled(!appState.canStartBatchCapture)
@@ -69,6 +88,34 @@ struct CaptureView: View {
                             }
                             .accessibilityIdentifier("capture.batch.clear.button")
                             .disabled(appState.batchCaptureURLs.isEmpty || appState.isBatchCaptureRunning)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Or paste URLs (one per line, or CSV/TXT content), then save.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            TextEditor(text: $batchURLTextInput)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 120)
+                                .padding(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                                )
+                                .accessibilityIdentifier("capture.batch.paste.texteditor")
+
+                            Button("Save") {
+                                Task {
+                                    await appState.saveBatchCaptureList(from: batchURLTextInput)
+                                }
+                            }
+                            .accessibilityIdentifier("capture.batch.save.button")
+                            .disabled(
+                                appState.captureState == .capturing ||
+                                appState.isBatchCaptureRunning ||
+                                batchURLTextInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            )
                         }
 
                         if !appState.batchCaptureURLs.isEmpty {
@@ -142,6 +189,24 @@ struct CaptureView: View {
         ) { result in
             handleBatchFileImport(result)
         }
+        .alert(
+            "Warning: no project selected",
+            isPresented: $showingDefaultProjectWarning,
+            presenting: pendingCaptureAction
+        ) { action in
+            Button("Continue") {
+                runCaptureAction(action)
+            }
+            Button("Create New Project") {
+                pendingCaptureAction = nil
+                onRequestProjects()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingCaptureAction = nil
+            }
+        } message: { action in
+            Text(action.warningMessage)
+        }
     }
 
     @ViewBuilder
@@ -166,7 +231,7 @@ struct CaptureView: View {
     private var batchCaptureStatusView: some View {
         switch appState.batchCaptureState {
         case .idle:
-            Text("Import a .txt or .csv list to capture multiple URLs in sequence.")
+            Text("Upload a .txt/.csv file or paste URLs, then Save to prepare batch capture.")
                 .foregroundStyle(.secondary)
         case .ready(let sourceName, let totalURLs, let ignoredLines, let duplicateURLs):
             Text("Ready: \(totalURLs) URL(s) loaded from \(sourceName). Ignored lines: \(ignoredLines). Duplicates: \(duplicateURLs).")
@@ -212,6 +277,29 @@ struct CaptureView: View {
                 return
             }
             appState.notifyInfo("File import failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func requestCaptureStart(_ action: PendingCaptureAction) {
+        guard appState.activeProject == WorkspacePaths.defaultProjectName else {
+            runCaptureAction(action)
+            return
+        }
+
+        pendingCaptureAction = action
+        showingDefaultProjectWarning = true
+    }
+
+    private func runCaptureAction(_ action: PendingCaptureAction) {
+        pendingCaptureAction = nil
+
+        Task {
+            switch action {
+            case .single:
+                await appState.captureCurrentURL()
+            case .batch:
+                await appState.startBatchCapture()
+            }
         }
     }
 }

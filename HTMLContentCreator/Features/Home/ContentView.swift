@@ -6,6 +6,7 @@ struct ContentView: View {
 
     @State private var selectedSection: SidebarSection? = .projects
     @State private var window: NSWindow?
+    @State private var showingDefaultProjectCaptureWarning = false
 
     var body: some View {
         NavigationSplitView {
@@ -92,6 +93,19 @@ struct ContentView: View {
         .onAppear {
             updateWindowTitle()
         }
+        .alert("Warning: no project selected", isPresented: $showingDefaultProjectCaptureWarning) {
+            Button("Continue") {
+                Task {
+                    await appState.captureCurrentURL()
+                }
+            }
+            Button("Create New Project") {
+                selectedSection = .projects
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Capture will be saved in \"default\" project.")
+        }
     }
 
     @ViewBuilder
@@ -100,7 +114,9 @@ struct ContentView: View {
         case .projects:
             ProjectsView()
         case .capture:
-            CaptureView()
+            CaptureView(onRequestProjects: {
+                selectedSection = .projects
+            })
         case .exploreAndEdit:
             ExploreAndEditView()
         case .share:
@@ -135,6 +151,12 @@ struct ContentView: View {
         }
 
         appState.captureURLInput = clipboardURL
+
+        guard appState.activeProject != WorkspacePaths.defaultProjectName else {
+            showingDefaultProjectCaptureWarning = true
+            return
+        }
+
         Task {
             await appState.captureCurrentURL()
         }

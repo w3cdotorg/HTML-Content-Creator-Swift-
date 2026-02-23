@@ -132,19 +132,78 @@ enum BatchCaptureURLListParser {
             .trimmingCharacters(in: CharacterSet(charactersIn: "\"'`<>[]()"))
 
         guard !trimmed.isEmpty else { return nil }
+        let repaired = repairLikelyHTTPScheme(in: trimmed)
 
-        if let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
-            return url.absoluteString
+        if let normalized = normalizeExplicitHTTPURL(repaired) {
+            return normalized
         }
 
-        guard looksLikeHostOrPath(trimmed) else { return nil }
-        guard let guessedURL = URL(string: "https://\(trimmed)"),
+        guard looksLikeHostOrPath(repaired) else { return nil }
+        guard let guessedURL = URL(string: "https://\(repaired)"),
               let scheme = guessedURL.scheme?.lowercased(),
               scheme == "http" || scheme == "https"
         else {
             return nil
         }
         return guessedURL.absoluteString
+    }
+
+    private static func normalizeExplicitHTTPURL(_ raw: String) -> String? {
+        guard
+            let components = URLComponents(string: raw),
+            let scheme = components.scheme?.lowercased(),
+            scheme == "http" || scheme == "https",
+            components.host != nil,
+            let normalized = components.url?.absoluteString
+        else {
+            return nil
+        }
+        return normalized
+    }
+
+    private static func repairLikelyHTTPScheme(in raw: String) -> String {
+        let lower = raw.lowercased()
+
+        if lower.hasPrefix("htps://") {
+            return "https://\(raw.dropFirst("htps://".count))"
+        }
+        if lower.hasPrefix("ttps://") {
+            return "https://\(raw.dropFirst("ttps://".count))"
+        }
+        if lower.hasPrefix("hxxps://") {
+            return "https://\(raw.dropFirst("hxxps://".count))"
+        }
+        if lower.hasPrefix("htp://") {
+            return "http://\(raw.dropFirst("htp://".count))"
+        }
+        if lower.hasPrefix("hxxp://") {
+            return "http://\(raw.dropFirst("hxxp://".count))"
+        }
+        if lower.hasPrefix("https//") {
+            return "https://\(raw.dropFirst("https//".count))"
+        }
+        if lower.hasPrefix("http//") {
+            return "http://\(raw.dropFirst("http//".count))"
+        }
+        if lower.hasPrefix("https:/"), !lower.hasPrefix("https://") {
+            return "https://\(raw.dropFirst("https:/".count))"
+        }
+        if lower.hasPrefix("http:/"), !lower.hasPrefix("http://") {
+            return "http://\(raw.dropFirst("http:/".count))"
+        }
+        if lower.hasPrefix("https:"), !lower.hasPrefix("https://") {
+            let remainder = raw.dropFirst("https:".count).drop(while: { $0 == "/" })
+            return "https://\(remainder)"
+        }
+        if lower.hasPrefix("http:"), !lower.hasPrefix("http://") {
+            let remainder = raw.dropFirst("http:".count).drop(while: { $0 == "/" })
+            return "http://\(remainder)"
+        }
+        if lower.hasPrefix("//") {
+            return "https:\(raw)"
+        }
+
+        return raw
     }
 
     private static func looksLikeHostOrPath(_ raw: String) -> Bool {
