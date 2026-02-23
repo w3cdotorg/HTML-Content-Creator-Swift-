@@ -1,9 +1,0 @@
-node_modules
-screenshots/*.png
-.env
-DerivedData/
-*.xcuserstate
-xcuserdata/
-.DS_Store
-docs/
-TODO.md
