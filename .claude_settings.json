@@ -1,0 +1,34 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/Users/willow/Sites/HTML Content Creator SwiftGPT/**)",
+      "Write(/Users/willow/Sites/HTML Content Creator SwiftGPT/**)",
+      "Edit(/Users/willow/Sites/HTML Content Creator SwiftGPT/**)",
+      "Glob(/Users/willow/Sites/HTML Content Creator SwiftGPT/**)",
+      "Grep(/Users/willow/Sites/HTML Content Creator SwiftGPT/**)",
+      "Read(/Users/willow/Sites/HTML Content Creator SwiftGPT/.auto-claude/specs/009-rendre-les-r-gles-de-blocage-pubs-cookies-configur/**)",
+      "Write(/Users/willow/Sites/HTML Content Creator SwiftGPT/.auto-claude/specs/009-rendre-les-r-gles-de-blocage-pubs-cookies-configur/**)",
+      "Edit(/Users/willow/Sites/HTML Content Creator SwiftGPT/.auto-claude/specs/009-rendre-les-r-gles-de-blocage-pubs-cookies-configur/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}

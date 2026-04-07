@@ -53,7 +53,31 @@ final class HTMLDeckGeneratorTitleTests: XCTestCase {
         try await seedCapture(projectName: project, filename: "001_example.com_20260217_1020.png")
 
         let output = try await generator.generate(projectName: project, requestedTitle: nil)
-        XCTAssertEqual(output.title, "Captures - client-c")
+        XCTAssertEqual(output.title, "Captures - Client C")
+    }
+
+    func testGenerateFallsBackToDisplayNameWhenAvailable() async throws {
+        let project = "ia-paris-8---musidanse"
+        try await seedCapture(projectName: project, filename: "001_example.com_20260217_1030.png")
+        _ = try await store.writeProjectMetadata(
+            projectName: project,
+            metadata: ProjectMetadata(htmlTitle: nil, displayName: "IA Paris 8 - Musidanse")
+        )
+
+        let output = try await generator.generate(projectName: project, requestedTitle: nil)
+        XCTAssertEqual(output.title, "Captures - IA Paris 8 - Musidanse")
+    }
+
+    func testGenerateIgnoresLegacyAutoSlugTitleAndUsesReadableFallback() async throws {
+        let project = "ia-paris-8---musidanse"
+        try await seedCapture(projectName: project, filename: "001_example.com_20260217_1040.png")
+        _ = try await store.writeProjectMetadata(
+            projectName: project,
+            metadata: ProjectMetadata(htmlTitle: "Captures - ia-paris-8---musidanse", displayName: nil)
+        )
+
+        let output = try await generator.generate(projectName: project, requestedTitle: nil)
+        XCTAssertEqual(output.title, "Captures - IA Paris 8 - Musidanse")
     }
 
     private func seedCapture(projectName: String, filename: String) async throws {

@@ -51,23 +51,69 @@ struct HTMLDeckGenerator {
     }
 
     private func resolveTitle(projectName: String, requestedTitle: String?) async throws -> String {
+        let metadata = await store.readProjectMetadata(projectName: projectName)
+
         if let requestedTitle {
             let trimmed = requestedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty {
                 _ = try await store.writeProjectMetadata(
                     projectName: projectName,
-                    metadata: ProjectMetadata(htmlTitle: trimmed)
+                    metadata: ProjectMetadata(
+                        htmlTitle: trimmed,
+                        displayName: metadata.displayName
+                    )
                 )
                 return trimmed
             }
         }
 
-        let metadata = await store.readProjectMetadata(projectName: projectName)
-        if let stored = metadata.htmlTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !stored.isEmpty {
+        if let stored = metadata.htmlTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !stored.isEmpty,
+           !Self.isLegacyAutoTitle(stored, projectName: projectName) {
             return stored
         }
 
-        return "Captures - \(projectName)"
+        if let displayName = metadata.displayName?.trimmingCharacters(in: .whitespacesAndNewlines), !displayName.isEmpty {
+            return "Captures - \(displayName)"
+        }
+
+        return "Captures - \(Self.humanReadableProjectLabel(from: projectName))"
+    }
+
+    private static func humanReadableProjectLabel(from projectName: String) -> String {
+        let separatorToken = "PROJECTSEPARATORTOKEN"
+        var cleaned = projectName.replacingOccurrences(
+            of: #"-{2,}"#,
+            with: " \(separatorToken) ",
+            options: .regularExpression
+        )
+        cleaned = cleaned.replacingOccurrences(
+            of: #"[-_.]+"#,
+            with: " ",
+            options: .regularExpression
+        )
+        let words = cleaned.split(whereSeparator: \.isWhitespace).map(String.init)
+        if words.isEmpty { return projectName }
+
+        return words
+            .map { token in
+                if token == separatorToken {
+                    return "-"
+                }
+                if token.allSatisfy(\.isNumber) {
+                    return token
+                }
+                if token.count <= 3 && token.allSatisfy(\.isLetter) {
+                    return token.uppercased()
+                }
+                let lower = token.lowercased()
+                return lower.prefix(1).uppercased() + lower.dropFirst()
+            }
+            .joined(separator: " ")
+    }
+
+    private static func isLegacyAutoTitle(_ title: String, projectName: String) -> Bool {
+        title.trimmingCharacters(in: .whitespacesAndNewlines) == "Captures - \(projectName)"
     }
 
     private func applySavedOrder(captures: [CaptureRecord], order: [String]) -> [CaptureRecord] {

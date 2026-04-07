@@ -164,10 +164,37 @@ final class AppState: ObservableObject {
     }
 
     func createProjectFromInput() async {
-        let candidate = WorkspacePaths.sanitizeProjectName(newProjectInput)
+        let rawDisplayName = newProjectInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let candidate = WorkspacePaths.sanitizeProjectName(rawDisplayName)
 
         do {
             let created = try await environment.store.ensureProject(candidate)
+
+            let existingMetadata = await environment.store.readProjectMetadata(projectName: created)
+            var updatedMetadata = existingMetadata
+            let normalizedDisplayName = rawDisplayName.isEmpty ? nil : rawDisplayName
+            let currentDisplayName = existingMetadata.displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasDisplayName = !(currentDisplayName?.isEmpty ?? true)
+            if !hasDisplayName, let normalizedDisplayName {
+                updatedMetadata.displayName = normalizedDisplayName
+            }
+
+            let currentTitle = existingMetadata.htmlTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hasTitle = !(currentTitle?.isEmpty ?? true)
+            if !hasTitle {
+                if let preferredDisplay = normalizedDisplayName ?? updatedMetadata.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !preferredDisplay.isEmpty {
+                    updatedMetadata.htmlTitle = "Captures - \(preferredDisplay)"
+                }
+            }
+
+            if updatedMetadata != existingMetadata {
+                _ = try await environment.store.writeProjectMetadata(
+                    projectName: created,
+                    metadata: updatedMetadata
+                )
+            }
+
             newProjectInput = ""
             if !projects.contains(created) {
                 projects.append(created)
@@ -183,7 +210,11 @@ final class AppState: ObservableObject {
 
     func saveProjectTitle() async {
         let title = projectTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        let metadata = ProjectMetadata(htmlTitle: title.isEmpty ? nil : title)
+        let currentMetadata = await environment.store.readProjectMetadata(projectName: activeProject)
+        let metadata = ProjectMetadata(
+            htmlTitle: title.isEmpty ? nil : title,
+            displayName: currentMetadata.displayName
+        )
 
         do {
             _ = try await environment.store.writeProjectMetadata(
@@ -596,7 +627,38 @@ final class AppState: ObservableObject {
 
     private func loadProjectMetadata() async {
         let metadata = await environment.store.readProjectMetadata(projectName: activeProject)
-        projectTitleInput = metadata.htmlTitle ?? ""
+        if let storedTitle = metadata.htmlTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !storedTitle.isEmpty {
+            if Self.isLegacyAutoTitle(storedTitle, projectName: activeProject) {
+                let upgradedTitle: String
+                if let displayName = metadata.displayName?.trimmingCharacters(in: .whitespacesAndNewlines), !displayName.isEmpty {
+                    upgradedTitle = "Captures - \(displayName)"
+                } else {
+                    upgradedTitle = "Captures - \(Self.humanReadableProjectLabel(from: activeProject))"
+                }
+
+                projectTitleInput = upgradedTitle
+
+                let upgradedMetadata = ProjectMetadata(
+                    htmlTitle: upgradedTitle,
+                    displayName: metadata.displayName
+                )
+                _ = try? await environment.store.writeProjectMetadata(
+                    projectName: activeProject,
+                    metadata: upgradedMetadata
+                )
+                return
+            }
+
+            projectTitleInput = storedTitle
+            return
+        }
+
+        if let displayName = metadata.displayName?.trimmingCharacters(in: .whitespacesAndNewlines), !displayName.isEmpty {
+            projectTitleInput = "Captures - \(displayName)"
+            return
+        }
+
+        projectTitleInput = "Captures - \(Self.humanReadableProjectLabel(from: activeProject))"
     }
 
     private func refreshGeneratedOutputStatus() async {
@@ -683,5 +745,41 @@ final class AppState: ObservableObject {
     private func modificationDate(for url: URL) -> Date? {
         let keys: Set<URLResourceKey> = [.contentModificationDateKey]
         return try? url.resourceValues(forKeys: keys).contentModificationDate
+    }
+
+    private static func humanReadableProjectLabel(from projectName: String) -> String {
+        let separatorToken = "PROJECTSEPARATORTOKEN"
+        var cleaned = projectName.replacingOccurrences(
+            of: #"-{2,}"#,
+            with: " \(separatorToken) ",
+            options: .regularExpression
+        )
+        cleaned = cleaned.replacingOccurrences(
+            of: #"[-_.]+"#,
+            with: " ",
+            options: .regularExpression
+        )
+        let words = cleaned.split(whereSeparator: \.isWhitespace).map(String.init)
+        if words.isEmpty { return projectName }
+
+        return words
+            .map { token in
+                if token == separatorToken {
+                    return "-"
+                }
+                if token.allSatisfy(\.isNumber) {
+                    return token
+                }
+                if token.count <= 3 && token.allSatisfy(\.isLetter) {
+                    return token.uppercased()
+                }
+                let lower = token.lowercased()
+                return lower.prefix(1).uppercased() + lower.dropFirst()
+            }
+            .joined(separator: " ")
+    }
+
+    private static func isLegacyAutoTitle(_ title: String, projectName: String) -> Bool {
+        title.trimmingCharacters(in: .whitespacesAndNewlines) == "Captures - \(projectName)"
     }
 }
